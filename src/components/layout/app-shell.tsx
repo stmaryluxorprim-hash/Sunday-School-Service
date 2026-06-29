@@ -18,7 +18,15 @@ function formatArabicDate(iso: string): string {
   }
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export type UserProfile = { name: string; email: string } | null;
+
+export function AppShell({
+  children,
+  profile = null,
+}: {
+  children: ReactNode;
+  profile?: UserProfile;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -37,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 px-4 pb-28 pt-4">{children}</main>
 
         <BottomNav />
-        <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} profile={profile} />
         <DateSheet
           open={dateOpen}
           onClose={() => setDateOpen(false)}

@@ -5,13 +5,15 @@ import { usePathname } from "next/navigation";
 import { X, LogOut, UserCircle2, Church } from "lucide-react";
 import { NAV_ITEMS } from "@/config/navigation";
 import { useSettings } from "@/context/settings-context";
+import { signOut } from "@/app/login/actions";
 
 type DrawerProps = {
   open: boolean;
   onClose: () => void;
+  profile?: { name: string; email: string } | null;
 };
 
-export function Drawer({ open, onClose }: DrawerProps) {
+export function Drawer({ open, onClose, profile = null }: DrawerProps) {
   const pathname = usePathname();
   const { branding } = useSettings();
 
@@ -55,12 +57,16 @@ export function Drawer({ open, onClose }: DrawerProps) {
           </button>
         </div>
 
-        {/* Profile placeholder (wired to RBAC profiles later) */}
+        {/* Current user */}
         <div className="mx-4 mt-4 flex items-center gap-3 rounded-2xl bg-surface-muted p-3">
           <UserCircle2 className="h-10 w-10 text-primary" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-ink">مستخدم ضيف</p>
-            <p className="truncate text-xs text-ink-muted">لم يتم تسجيل الدخول</p>
+            <p className="truncate text-sm font-semibold text-ink">
+              {profile?.name ?? "مستخدم"}
+            </p>
+            <p className="truncate text-xs text-ink-muted" dir="ltr">
+              {profile?.email ?? ""}
+            </p>
           </div>
         </div>
 
@@ -88,16 +94,17 @@ export function Drawer({ open, onClose }: DrawerProps) {
           })}
         </nav>
 
-        {/* Logout (wired to Supabase auth later) */}
+        {/* Logout */}
         <div className="absolute inset-x-0 bottom-0 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-          <Link
-            href="/login"
-            onClick={onClose}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-soft py-3 text-sm font-bold text-accent active:scale-95 transition"
-          >
-            <LogOut className="h-5 w-5" />
-            تسجيل الخروج
-          </Link>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-soft py-3 text-sm font-bold text-accent active:scale-95 transition"
+            >
+              <LogOut className="h-5 w-5" />
+              تسجيل الخروج
+            </button>
+          </form>
         </div>
       </aside>
     </>

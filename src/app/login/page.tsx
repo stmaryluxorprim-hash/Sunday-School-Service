@@ -1,11 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Church, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { useFormState, useFormStatus } from "react-dom";
+import { Church, Mail, Lock, User, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { signIn, signUp, type AuthResult } from "./actions";
+
+const initialState: AuthResult = {};
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+
+  // Separate state per action so switching tabs clears messages naturally.
+  const [signInState, signInAction] = useFormState(signIn, initialState);
+  const [signUpState, signUpAction] = useFormState(signUp, initialState);
+
+  const state = mode === "signin" ? signInState : signUpState;
 
   return (
     <div className="bg-aurora flex min-h-screen items-center justify-center p-5">
@@ -40,40 +49,50 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-            {mode === "signup" && (
-              <Field icon={User} placeholder="الاسم بالكامل" type="text" />
-            )}
-            <Field icon={Mail} placeholder="البريد الإلكتروني" type="email" dir="ltr" />
-            <Field icon={Lock} placeholder="كلمة المرور" type="password" dir="ltr" />
+          {/* Feedback */}
+          {state.error && (
+            <div className="mb-3 flex items-center gap-2 rounded-2xl bg-accent-soft px-3 py-2.5 text-sm font-semibold text-accent">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{state.error}</span>
+            </div>
+          )}
+          {state.message && (
+            <div className="mb-3 flex items-center gap-2 rounded-2xl bg-primary-soft px-3 py-2.5 text-sm font-semibold text-primary">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>{state.message}</span>
+            </div>
+          )}
 
-            {mode === "signin" && (
-              <div className="text-end">
-                <button type="button" className="text-xs font-semibold text-primary">
-                  نسيت كلمة المرور؟
-                </button>
-              </div>
-            )}
-
-            <button className="w-full rounded-2xl btn-gradient py-3 text-sm font-bold text-white shadow-soft active:scale-95 transition">
-              {mode === "signin" ? "دخول" : "إنشاء الحساب"}
-            </button>
-          </form>
-
-          <p className="mt-4 text-center text-xs text-ink-muted">
-            سيتم ربط تسجيل الدخول بـ Supabase في خطوة قادمة.
-          </p>
+          {mode === "signin" ? (
+            <form action={signInAction} className="space-y-3" key="signin">
+              <Field icon={Mail} name="email" placeholder="البريد الإلكتروني" type="email" dir="ltr" autoComplete="email" />
+              <Field icon={Lock} name="password" placeholder="كلمة المرور" type="password" dir="ltr" autoComplete="current-password" />
+              <SubmitButton label="دخول" />
+            </form>
+          ) : (
+            <form action={signUpAction} className="space-y-3" key="signup">
+              <Field icon={User} name="fullName" placeholder="الاسم بالكامل" type="text" autoComplete="name" />
+              <Field icon={Mail} name="email" placeholder="البريد الإلكتروني" type="email" dir="ltr" autoComplete="email" />
+              <Field icon={Lock} name="password" placeholder="كلمة المرور (6 أحرف على الأقل)" type="password" dir="ltr" autoComplete="new-password" />
+              <SubmitButton label="إنشاء الحساب" />
+            </form>
+          )}
         </div>
-
-        <Link
-          href="/"
-          className="mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-ink-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          الدخول كزائر (معاينة)
-        </Link>
       </div>
     </div>
+  );
+}
+
+function SubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      disabled={pending}
+      className="flex w-full items-center justify-center gap-2 rounded-2xl btn-gradient py-3 text-sm font-bold text-white shadow-soft transition active:scale-95 disabled:opacity-70"
+    >
+      {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+      {pending ? "جارٍ المعالجة..." : label}
+    </button>
   );
 }
 
@@ -86,6 +105,7 @@ function Field({
       <Icon className="h-5 w-5 text-ink-muted" />
       <input
         {...props}
+        required
         className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
       />
     </div>
