@@ -52,8 +52,25 @@ npm run dev   # http://localhost:3000
 
 ## النشر | Deployment
 - **المنصة المستهدفة**: Vercel (للواجهة) + Supabase (قاعدة البيانات والتخزين).
+- **GitHub**: https://github.com/stmaryluxorprim-hash/Sunday-School-Service
 - **الحالة**: ⏳ قيد التطوير — الخطوة 1 (التصميم العام) مكتملة.
-- انسخ `.env.example` إلى `.env.local` واملأ مفاتيح Supabase عند ربطها.
+
+### متغيرات البيئة على Vercel | Vercel Environment Variables
+أضف هذين المتغيّرين في Vercel → Project → **Settings → Environment Variables**:
+
+| Name | Value | Environments |
+|------|-------|--------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | رابط مشروع Supabase | Production · Preview · Development |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | مفتاح anon العام | Production · Preview · Development |
+
+> هذه القيم **لا تُحفظ في GitHub** — فقط في Vercel. ملف `.env*` مُستثنى عبر `.gitignore`.
+> للتطوير المحلي: انسخ `.env.example` إلى `.env.local` واملأ نفس المفاتيح.
+
+### الخطوات | Steps
+1. ادفع الكود إلى GitHub (تم).
+2. في Vercel: **New Project → Import** المستودع `Sunday-School-Service`.
+3. أضف متغيّري البيئة أعلاه.
+4. **Deploy** — سيكتشف Vercel إطار Next.js تلقائياً.
 
 ---
 آخر تحديث: الخطوة 1 — التصميم العام
