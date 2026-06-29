@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   Theme tokens — configurable at runtime from Settings.
+   Values are space-separated RGB channels (for /<alpha>).
+   ========================================================= */
+:root {
+  --color-primary: 109 93 252;        /* indigo-violet */
+  --color-primary-soft: 224 221 255;
+  --color-accent: 241 91 181;         /* rose-pink */
+  --color-accent-soft: 255 224 242;
+  --color-secondary: 0 187 249;       /* teal-cyan */
+  --color-surface: 255 255 255;
+  --color-surface-muted: 245 246 252;
+  --color-ink: 30 27 56;
+  --color-ink-muted: 110 110 135;
+
+  --radius: 1.25rem;
+}
+
+[data-theme="dark"] {
+  --color-surface: 22 20 38;
+  --color-surface-muted: 32 29 54;
+  --color-ink: 240 240 255;
+  --color-ink-muted: 165 165 195;
+  --color-primary-soft: 60 52 120;
+  --color-accent-soft: 90 40 75;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--color-surface-muted));
+  color: rgb(var(--color-ink));
+  font-family: var(--font-arabic), "Tajawal", system-ui, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+/* Abstract gradient background blobs */
+.bg-aurora {
+  position: relative;
+  overflow: hidden;
+}
+.bg-aurora::before,
+.bg-aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.45;
+  z-index: 0;
+  pointer-events: none;
+}
+.bg-aurora::before {
+  width: 320px;
+  height: 320px;
+  top: -80px;
+  inset-inline-start: -60px;
+  background: rgb(var(--color-primary));
+  animation: blob-float 14s ease-in-out infinite;
+}
+.bg-aurora::after {
+  width: 280px;
+  height: 280px;
+  bottom: -60px;
+  inset-inline-end: -40px;
+  background: rgb(var(--color-accent));
+  animation: blob-float 18s ease-in-out infinite reverse;
+}
+
+/* Glass card */
+.glass {
+  background: rgb(var(--color-surface) / 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(255 255 255 / 0.25);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(
+    100deg,
+    rgb(var(--color-primary)),
+    rgb(var(--color-accent))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-gradient {
+  background: linear-gradient(
+    100deg,
+    rgb(var(--color-primary)),
+    rgb(var(--color-accent))
+  );
+  color: #fff;
+}
+
+/* Hide scrollbars for nav strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
