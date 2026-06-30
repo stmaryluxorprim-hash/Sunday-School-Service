@@ -2,7 +2,8 @@
 --  Version: 0002
 --  Title:   Classes + Members schema
 --  Step:    4 — Add Member / Classes management
---  Includes: code_word column, classes table, members table,
+--  Includes: code_word column, classes table, members table
+--            (name + birth_date single columns; phone stored as +2…),
 --            RLS, realtime, cascade delete, triggers
 --  Run this in: Supabase Dashboard → SQL Editor → New query → Run
 --  Note: idempotent (safe to re-run).
@@ -40,23 +41,9 @@ create table if not exists public.classes (
 create table if not exists public.members (
   id              uuid primary key default gen_random_uuid(),
   code            text unique not null,        -- StMary + datetime ms
-  -- الاسم الرباعي (4 خانات) + الاسم المجمّع
-  name1           text not null default '',
-  name2           text not null default '',
-  name3           text not null default '',
-  name4           text not null default '',
-  full_name       text generated always as (
-                    btrim(
-                      coalesce(name1,'') || ' ' ||
-                      coalesce(name2,'') || ' ' ||
-                      coalesce(name3,'') || ' ' ||
-                      coalesce(name4,'')
-                    )
-                  ) stored,
-  phone           text,                         -- 11 رقم (بدون +2)؛ التحقق في الواجهة
-  birth_day       int,                          -- يوم
-  birth_month     int,                          -- شهر
-  birth_year      int,                          -- سنة
+  name            text not null,                -- الاسم الرباعي كامل في خانة واحدة
+  phone           text,                         -- محفوظ بصيغة +2 + 11 رقم (مثل +201273447740)
+  birth_date      date,                         -- تاريخ الميلاد في خانة واحدة
   address         text,
   notes           text,
   photo_path      text,

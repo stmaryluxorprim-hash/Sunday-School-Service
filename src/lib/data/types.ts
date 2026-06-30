@@ -29,15 +29,9 @@ export type ClassRow = {
 export type MemberRow = {
   id: string;
   code: string;
-  name1: string;
-  name2: string;
-  name3: string;
-  name4: string;
-  full_name?: string;
-  phone: string | null;
-  birth_day: number | null;
-  birth_month: number | null;
-  birth_year: number | null;
+  name: string; // الاسم الرباعي كامل في خانة واحدة (تخزين)
+  phone: string | null; // محفوظ بصيغة +2 + 11 رقم (مثل +201273447740)
+  birth_date: string | null; // تاريخ الميلاد في خانة واحدة (ISO date)
   address: string | null;
   notes: string | null;
   photo_path: string | null;
@@ -61,70 +55,105 @@ export function classDisplayName(c: Pick<ClassRow, "name" | "stage">): string {
   return (c.stage || "").trim() || "بدون اسم";
 }
 
-/** Validate an Egyptian-style 11-digit phone starting with 0. */
-export function isValidPhone(phone: string): boolean {
-  return /^0\d{10}$/.test(phone);
-}
+// ---------------------------------------------------------------------------
+//  Phone helpers — storage format is "+2" + 11 digits (e.g. +201273447740)
+// ---------------------------------------------------------------------------
 
 /**
- * Split a full (typically 4-part) name typed in a single field into the
- * stored parts [name1, name2, name3, name4]. This is purely an INPUT helper —
- * storage stays split. Extra words beyond the 4th are appended to name4 so we
- * never lose any part of the name.
+ * Normalize a raw phone input into the canonical local 11-digit form.
+ * - strips everything except digits
+ * - drops a leading "2" / "002" country code if present
+ * - if 10 digits and missing the leading 0, prepends it
+ * Returns the 11-digit local number (e.g. 01273447740) or "" when unusable.
  */
-export function splitName(full: string): [string, string, string, string] {
-  const parts = (full || "").trim().split(/\s+/).filter(Boolean);
-  const name1 = parts[0] ?? "";
-  const name2 = parts[1] ?? "";
-  const name3 = parts[2] ?? "";
-  const name4 = parts.slice(3).join(" "); // keep the rest together
-  return [name1, name2, name3, name4];
+export function normalizePhone(raw: string): string {
+  let d = (raw || "").replace(/\D/g, "");
+  // strip country code variants: 002xxxxxxxxxxx / 2xxxxxxxxxxx
+  if (d.startsWith("002")) d = d.slice(3);
+  else if (d.length === 13 && d.startsWith("2")) d = d.slice(1);
+  else if (d.length === 12 && d.startsWith("2")) d = d.slice(1);
+  // 10 digits missing the leading 0 -> add it
+  if (d.length === 10 && !d.startsWith("0")) d = "0" + d;
+  return d.slice(0, 11);
 }
 
-/** Join the stored name parts back into a single full-name string. */
-export function joinName(
-  c: Pick<MemberRow, "name1" | "name2" | "name3" | "name4">
-): string {
-  return [c.name1, c.name2, c.name3, c.name4]
+/** Validate the normalized local phone: 11 digits starting with 0. */
+export function isValidPhone(local: string): boolean {
+  return /^0\d{10}$/.test(local);
+}
+
+/** Format a normalized local phone for STORAGE: "+2" + 11 digits. */
+export function phoneForStorage(local: string): string | null {
+  const l = normalizePhone(local);
+  return isValidPhone(l) ? `+2${l}` : null;
+}
+
+/** Display a stored phone (already "+2…") as-is, or fallback. */
+export function phoneDisplay(stored: string | null): string {
+  return stored || "";
+}
+
+// ---------------------------------------------------------------------------
+//  Name helpers — UI uses 4 parts, storage is a single `name` string
+// ---------------------------------------------------------------------------
+
+/** Join 4 UI name parts into the single stored `name` string. */
+export function joinNameParts(parts: string[]): string {
+  return parts
     .map((s) => (s || "").trim())
     .filter(Boolean)
     .join(" ");
 }
 
-/**
- * Parse a single date string into the stored {day, month, year} parts.
- * Accepts ISO `YYYY-MM-DD` (from <input type="date">) and common
- * `D/M/YYYY` / `D-M-YYYY` formats used when pasting. INPUT helper only —
- * storage stays split into birth_day / birth_month / birth_year.
- */
-export function parseDateString(s: string): {
+/** Split a stored `name` back into 4 UI parts (4th keeps any extra words). */
+export function splitNameParts(name: string): [string, string, string, string] {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  return [
+    parts[0] ?? "",
+    parts[1] ?? "",
+    parts[2] ?? "",
+    parts.slice(3).join(" "),
+  ];
+}
+
+// ---------------------------------------------------------------------------
+//  Date helpers — UI uses day/month/year, storage is a single ISO `birth_date`
+// ---------------------------------------------------------------------------
+
+/** Combine day/month/year into a single ISO `YYYY-MM-DD` (or null). */
+export function partsToISO(
+  day: number | null,
+  month: number | null,
+  year: number | null
+): string | null {
+  if (!day || !month || !year) return null;
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}-${mm}-${dd}`;
+}
+
+/** Split a stored ISO `birth_date` into {day, month, year}. */
+export function isoToParts(iso: string | null): {
   day: number | null;
   month: number | null;
   year: number | null;
 } {
   const empty = { day: null, month: null, year: null };
-  const t = (s || "").trim();
-  if (!t) return empty;
-
-  // ISO: YYYY-MM-DD
-  const iso = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) {
-    return { year: +iso[1], month: +iso[2], day: +iso[3] };
-  }
-  // D/M/YYYY or D-M-YYYY
-  const dmy = t.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-  if (dmy) {
-    return { day: +dmy[1], month: +dmy[2], year: +dmy[3] };
-  }
-  return empty;
+  const m = (iso || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return empty;
+  return { year: +m[1], month: +m[2], day: +m[3] };
 }
 
-/** Format the stored DOB parts back to ISO `YYYY-MM-DD` (for <input type="date">). */
-export function dobToISO(
-  c: Pick<MemberRow, "birth_day" | "birth_month" | "birth_year">
-): string {
-  if (!c.birth_year || !c.birth_month || !c.birth_day) return "";
-  const mm = String(c.birth_month).padStart(2, "0");
-  const dd = String(c.birth_day).padStart(2, "0");
-  return `${c.birth_year}-${mm}-${dd}`;
+/**
+ * Parse a pasted date cell into ISO `YYYY-MM-DD` (or null).
+ * Accepts `YYYY-MM-DD` and `D/M/YYYY` / `D-M-YYYY` / `D.M.YYYY`.
+ */
+export function parseDateCell(s: string): string | null {
+  const t = (s || "").trim();
+  if (!t) return null;
+  const iso = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return partsToISO(+iso[3], +iso[2], +iso[1]);
+  const dmy = t.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+  if (dmy) return partsToISO(+dmy[1], +dmy[2], +dmy[3]);
+  return null;
 }

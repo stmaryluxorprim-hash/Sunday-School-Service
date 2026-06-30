@@ -1,10 +1,11 @@
 "use client";
 
-import { isValidPhone } from "@/lib/data/types";
+import { isValidPhone, normalizePhone } from "@/lib/data/types";
 
 /**
- * Phone field: fixed +2 prefix + 11-digit number that must start with 0.
- * Only digits allowed, capped at 11.
+ * Phone field: fixed +2 prefix. Accepts 10 digits (missing leading 0) or
+ * 11 digits starting with 0 — normalized to 11 digits on save. Stored as
+ * "+2" + 11 digits. Only digits allowed, capped at 12 to allow a typed "2".
  */
 export function PhoneField({
   value,
@@ -13,7 +14,8 @@ export function PhoneField({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const invalid = value.length > 0 && !isValidPhone(value);
+  // valid if it normalizes to a proper 11-digit local number
+  const invalid = value.length > 0 && !isValidPhone(normalizePhone(value));
 
   return (
     <div>
@@ -29,15 +31,19 @@ export function PhoneField({
         </span>
         <input
           value={value}
-          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 12))}
           inputMode="numeric"
           placeholder="01xxxxxxxxx"
           className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
         />
       </div>
-      {invalid && (
+      {invalid ? (
         <p className="mt-1 text-[11px] font-semibold text-accent">
-          يجب أن يكون 11 رقماً ويبدأ بـ 0 (مثال: 01012345678)
+          يجب أن يكون 11 رقماً يبدأ بـ 0 (أو 10 أرقام بدون الصفر)
+        </p>
+      ) : (
+        <p className="mt-1 text-[11px] text-ink-muted">
+          يُحفظ بصيغة <span dir="ltr">+2…</span> — لو 10 أرقام يُضاف الصفر تلقائياً
         </p>
       )}
     </div>

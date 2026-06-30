@@ -63,7 +63,7 @@ export default function DataPage() {
     if (!q.trim()) return members;
     const needle = q.toLowerCase();
     return members.filter((m) => {
-      const hay = `${m.full_name ?? ""} ${m.code} ${m.phone ?? ""}`.toLowerCase();
+      const hay = `${m.name ?? ""} ${m.code} ${m.phone ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
   }, [members, q]);
@@ -207,9 +207,9 @@ function MemberItem({ m }: { m: MemberRow }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-bold text-ink">{m.full_name || "—"}</p>
+        <p className="truncate font-bold text-ink">{m.name || "—"}</p>
         <p className="truncate text-xs text-ink-muted" dir="ltr">
-          {m.phone ? `+2${m.phone}` : m.code}
+          {m.phone || m.code}
         </p>
       </div>
       <span
