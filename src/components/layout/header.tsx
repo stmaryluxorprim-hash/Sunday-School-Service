@@ -19,10 +19,10 @@ export function Header({ onMenuClick, onDateClick, selectedDate }: HeaderProps) 
           {/* Right side (RTL start): icon + name + slogan */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl btn-gradient shadow-soft overflow-hidden">
-              {branding.iconUrl ? (
+              {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={branding.iconUrl}
+                  src={branding.logoUrl}
                   alt="icon"
                   className="h-full w-full object-cover"
                 />
