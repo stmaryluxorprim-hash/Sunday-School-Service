@@ -445,8 +445,20 @@ function RowCard({
   const ok = "border-primary-soft";
   const bad = "border-accent text-accent";
 
+  // The whole row has a problem if the name is missing, the phone is invalid,
+  // or the birth date is invalid. When any of these is true we highlight the
+  // ENTIRE card in red until the user fixes it.
+  const nameBad = !row.name.trim();
+  const hasProblem = nameBad || phoneBad || dateBad;
+
   return (
-    <div className="animate-fade-up rounded-3xl bg-surface p-3 shadow-card border border-white/40">
+    <div
+      className={`animate-fade-up rounded-3xl p-3 shadow-card border transition-colors ${
+        hasProblem
+          ? "bg-accent-soft border-accent ring-2 ring-accent/60"
+          : "bg-surface border-white/40"
+      }`}
+    >
       <div className="mb-2 flex items-center justify-between">
         <span className="grid h-6 min-w-6 place-items-center rounded-lg bg-primary-soft px-1.5 text-xs font-bold text-primary">
           {index}
