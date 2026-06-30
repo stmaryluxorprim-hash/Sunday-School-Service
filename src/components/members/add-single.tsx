@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, Check, Church } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useSettings } from "@/context/settings-context";
@@ -24,6 +24,7 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
   const { branding } = useSettings();
 
   // UI keeps 4 name parts + day/month/year — storage is a single name + birth_date
+  const [code, setCode] = useState("");
   const [names, setNames] = useState(["", "", "", ""]);
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState<DOB>({ day: null, month: null, year: null });
@@ -42,6 +43,30 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // Codes that already exist in the database (lower-cased). A typed code that
+  // matches one of these is a duplicate and blocks the add (highlighted red).
+  const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("members")
+      .select("code")
+      .then(({ data }) => {
+        const set = new Set<string>();
+        (data as { code: string | null }[] | null)?.forEach((m) => {
+          if (m.code) set.add(m.code.trim().toLowerCase());
+        });
+        setExistingCodes(set);
+      });
+  }, []);
+
+  // A typed code is a duplicate when it's non-empty and already exists.
+  const codeBad = code.trim().length > 0 && existingCodes.has(code.trim().toLowerCase());
+
+  // A class MUST be selected — not choosing one is a problem that blocks add.
+  const classBad = !classId;
+
   const setName = (i: number, v: string) =>
     setNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
 
@@ -57,6 +82,7 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
   };
 
   const reset = () => {
+    setCode("");
     setNames(["", "", "", ""]);
     setPhone("");
     setDob({ day: null, month: null, year: null });
@@ -80,10 +106,22 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
       setError("رقم التليفون يجب أن يكون 11 رقماً يبدأ بـ 0 (أو 10 أرقام بدون الصفر).");
       return;
     }
+    // code is optional (auto-generated when empty); if typed it must be unique
+    const typedCode = code.trim();
+    if (typedCode && existingCodes.has(typedCode.toLowerCase())) {
+      setError("هذا الكود مستخدم من قبل. غيّر الكود أو اتركه فارغاً ليُولَّد تلقائياً.");
+      return;
+    }
+    // class is required
+    if (!classId) {
+      setError("اختيار الفصل مطلوب.");
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
+    const finalCode = typedCode || generateMemberCode(branding.codeWord);
     const row = {
-      code: generateMemberCode(branding.codeWord),
+      code: finalCode,
       name: joinNameParts(names),                 // single stored name
       phone: phone ? phoneForStorage(phone) : null, // stored as +2 + 11 digits
       birth_date: partsToISO(dob.day, dob.month, dob.year), // single stored date
@@ -98,6 +136,8 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
     try {
       const { error: err } = await supabase.from("members").insert(row);
       if (err) throw err;
+      // register the saved code so it's treated as existing for the next add
+      setExistingCodes((prev) => new Set(prev).add(finalCode.trim().toLowerCase()));
       setDone(true);
       reset();
       setTimeout(() => setDone(false), 2500);
@@ -142,6 +182,29 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
           }}
         />
         <p className="text-[11px] text-ink-muted">من المعرض أو الكاميرا — يتم القص والضغط تلقائياً</p>
+      </div>
+
+      {/* code (optional, auto-generated when empty) */}
+      <div
+        className={`animate-fade-up rounded-3xl p-4 shadow-card border transition-colors ${
+          codeBad ? "bg-accent-soft border-accent ring-2 ring-accent/60" : "bg-surface border-white/40"
+        }`}
+      >
+        <label className="mb-1 block text-xs font-semibold text-ink-muted">
+          الكود <span className="text-ink-muted/70">(اختياري — يُولَّد تلقائياً إذا تُرك فارغاً)</span>
+        </label>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          dir="ltr"
+          placeholder="StMary1759503656922"
+          className={`${input} ${codeBad ? "border-accent text-accent" : ""}`}
+        />
+        {codeBad && (
+          <p className="mt-1 text-[11px] font-semibold text-accent">
+            هذا الكود مستخدم من قبل — غيّره أو اتركه فارغاً
+          </p>
+        )}
       </div>
 
       {/* names — 4 input boxes (UI), joined into one stored name */}
@@ -209,17 +272,22 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">الفصل</label>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">الفصل *</label>
           <select
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
-            className={input}
+            className={`${input} ${classBad ? "border-accent text-accent" : ""}`}
           >
-            <option value="">بدون فصل</option>
+            <option value="">اختر الفصل</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+          {classBad && (
+            <p className="mt-1 text-[11px] font-semibold text-accent">
+              اختيار الفصل مطلوب
+            </p>
+          )}
         </div>
       </div>
 
@@ -231,7 +299,7 @@ export function AddSingle({ classes }: { classes: ClassOpt[] }) {
 
       <button
         onClick={handleSave}
-        disabled={saving}
+        disabled={saving || codeBad || classBad}
         className="flex w-full items-center justify-center gap-2 rounded-2xl btn-gradient py-3.5 text-sm font-bold text-white shadow-soft active:scale-95 disabled:opacity-70"
       >
         {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : done ? <Check className="h-5 w-5" /> : null}
