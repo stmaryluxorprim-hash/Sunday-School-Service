@@ -16,3 +16,4 @@
 | Version | File | Description |
 |---------|------|-------------|
 | 0001 | `0001_settings.sql` | جدول `app_settings` + RLS + Realtime + Storage bucket `app-images` + سياساته |
+| 0002 | `0002_members_classes.sql` | عمود `code_word` + جدولا `classes` و `members` + RLS + Realtime + Cascade |

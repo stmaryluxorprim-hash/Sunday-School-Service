@@ -19,6 +19,7 @@ export default function IdentityPage() {
 
   const [name, setName] = useState(branding.serviceName);
   const [slogan, setSlogan] = useState(branding.slogan);
+  const [codeWord, setCodeWord] = useState(branding.codeWord);
   const [primary, setPrimary] = useState(branding.colorPrimary);
   const [accent, setAccent] = useState(branding.colorAccent);
 
@@ -39,6 +40,7 @@ export default function IdentityPage() {
       await save({
         serviceName: name.trim() || "خدمة الكنيسة",
         slogan: slogan.trim(),
+        codeWord: codeWord.trim().replace(/\s+/g, "") || "StMary",
         colorPrimary: primary,
         colorAccent: accent,
       });
@@ -140,6 +142,21 @@ export default function IdentityPage() {
             }}
             className="w-full rounded-2xl border border-primary-soft bg-surface-muted px-4 py-2.5 text-ink outline-none focus:border-primary"
           />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">
+            كلمة الكود (تُستخدم في بداية أكواد المخدومين)
+          </label>
+          <input
+            value={codeWord}
+            onChange={(e) => setCodeWord(e.target.value)}
+            dir="ltr"
+            placeholder="StMary"
+            className="w-full rounded-2xl border border-primary-soft bg-surface-muted px-4 py-2.5 text-ink outline-none focus:border-primary"
+          />
+          <p className="mt-1 text-[11px] text-ink-muted">
+            مثال على الكود الناتج: <span dir="ltr">{(codeWord.trim().replace(/\s+/g, "") || "StMary")}1759503656922</span>
+          </p>
         </div>
       </div>
 

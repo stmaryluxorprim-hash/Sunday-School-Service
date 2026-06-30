@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import "./globals.css";
 import { SettingsProvider } from "@/context/settings-context";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -9,16 +11,44 @@ const cairo = Cairo({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "خدمة الكنيسة",
-  description: "تطبيق إدارة خدمات الكنيسة",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "خدمة الكنيسة",
-  },
-};
+/** Build metadata (title + app icon) from the uploaded branding when available. */
+export async function generateMetadata(): Promise<Metadata> {
+  let serviceName = "خدمة الكنيسة";
+  let logoUrl: string | null = null;
+
+  if (isSupabaseConfigured) {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("app_settings")
+        .select("service_name, logo_url")
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        serviceName = (data.service_name as string) || serviceName;
+        logoUrl = (data.logo_url as string) || null;
+      }
+    } catch {
+      /* ignore — fall back to defaults */
+    }
+  }
+
+  const icons = logoUrl
+    ? { icon: logoUrl, apple: logoUrl, shortcut: logoUrl }
+    : { icon: "/favicon.ico", apple: "/icons/apple-touch-icon.png" };
+
+  return {
+    title: serviceName,
+    description: "تطبيق إدارة خدمات الكنيسة",
+    manifest: "/manifest.webmanifest",
+    icons,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: serviceName,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#6d5dfc",

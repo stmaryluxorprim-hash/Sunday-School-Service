@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Church, Mail, Lock, User, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { signIn, signUp, type AuthResult } from "./actions";
+import { useSettings } from "@/context/settings-context";
 
 const initialState: AuthResult = {};
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const { branding } = useSettings();
 
   // Separate state per action so switching tabs clears messages naturally.
   const [signInState, signInAction] = useFormState(signIn, initialState);
@@ -21,11 +23,16 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-3xl btn-gradient shadow-soft">
-            <Church className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-3 grid h-16 w-16 place-items-center overflow-hidden rounded-3xl btn-gradient shadow-soft">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoUrl} alt="logo" className="h-full w-full object-cover" />
+            ) : (
+              <Church className="h-8 w-8 text-white" />
+            )}
           </div>
-          <h1 className="text-xl font-bold text-ink">خدمة الكنيسة</h1>
-          <p className="text-sm text-ink-muted">نخدم بمحبة ونعمل بإخلاص</p>
+          <h1 className="text-xl font-bold text-ink">{branding.serviceName}</h1>
+          <p className="text-sm text-ink-muted">{branding.slogan}</p>
         </div>
 
         <div className="glass rounded-3xl border border-white/30 p-5 shadow-card">

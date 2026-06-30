@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Settings as SettingsIcon, Palette, ChevronLeft, ShieldCheck, Users } from "lucide-react";
+import { Settings as SettingsIcon, Palette, ChevronLeft, ShieldCheck, Users, GraduationCap } from "lucide-react";
 import { PageHero } from "@/components/ui/page-card";
 
 /** Settings is a list of cards; each opens a dedicated sub-page. */
@@ -10,6 +10,13 @@ const SETTINGS_CARDS = [
     desc: "اسم الخدمة، الشعار، الألوان، واللوجو",
     href: "/settings/identity",
     icon: Palette,
+  },
+  {
+    key: "classes",
+    title: "إدارة الفصول",
+    desc: "إضافة وتعديل وحذف الفصول",
+    href: "/settings/classes",
+    icon: GraduationCap,
   },
   // Future cards (RBAC step):
   {
