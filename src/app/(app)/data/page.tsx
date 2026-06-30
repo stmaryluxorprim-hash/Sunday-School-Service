@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Database,
@@ -10,22 +10,92 @@ import {
   User,
   GraduationCap,
   ChevronDown,
+  CalendarCheck,
+  CalendarX,
+  Coins,
 } from "lucide-react";
 import { PageHero } from "@/components/ui/page-card";
 import { createClient } from "@/lib/supabase/client";
-import { MemberRow, ClassRow, classDisplayName } from "@/lib/data/types";
+import {
+  MemberRow,
+  ClassRow,
+  AttendanceRow,
+  classDisplayName,
+  ShowFilter,
+  ActionKey,
+} from "@/lib/data/types";
+import {
+  DataControls,
+  ControlsState,
+  DEFAULT_CONTROLS,
+} from "@/components/members/data-controls";
+import { PointsDialog } from "@/components/members/points-dialog";
+import {
+  markAttendance,
+  unmarkAttendance,
+  adjustBalance,
+  isPointsAction,
+  OpResult,
+} from "@/lib/data/operations";
+import { useSelectedDate } from "@/context/selected-date-context";
+import { useSettings } from "@/context/settings-context";
 
 type Group = {
   cls: ClassRow | null; // null = members with no class
   members: MemberRow[];
 };
 
+/** هل يجتاز المخدوم فلتر إظهار واحد؟ */
+function passesFilter(m: MemberRow, f: ShowFilter): boolean {
+  switch (f) {
+    case "male":
+      return m.gender === "male";
+    case "female":
+      return m.gender === "female";
+    case "with_phone":
+      return !!m.phone;
+    case "no_phone":
+      return !m.phone;
+    case "with_photo":
+      return !!m.photo_url;
+    case "no_class":
+      return !m.class_id;
+    case "positive_balance":
+      return (m.opening_balance ?? 0) > 0;
+    case "negative_balance":
+      return (m.opening_balance ?? 0) < 0;
+    default:
+      return true;
+  }
+}
+
 export default function DataPage() {
+  const { date } = useSelectedDate(); // التاريخ المختار من الهيدر (YYYY-MM-DD)
+  const { branding, ready: settingsReady } = useSettings();
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
+  // مجموعة معرّفات من حضر في التاريخ المختار
+  const [presentToday, setPresentToday] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [controls, setControls] = useState<ControlsState>(DEFAULT_CONTROLS);
+  // بمجرد جاهزية الإعدادات: ابدأ بعدد النقاط الافتراضي من الهوية (مرّة واحدة).
+  const pointsSeeded = useRef(false);
+  useEffect(() => {
+    if (!settingsReady || pointsSeeded.current) return;
+    pointsSeeded.current = true;
+    setControls((prev) => ({
+      ...prev,
+      points: branding.defaultPoints ?? prev.points,
+    }));
+  }, [settingsReady, branding.defaultPoints]);
+
+  // حالة العملية الجارية + رسالة (toast)
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  // dialog النقاط
+  const [pointsFor, setPointsFor] = useState<MemberRow | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -38,20 +108,29 @@ export default function DataPage() {
     setLoading(false);
   }, []);
 
+  // جلب حضور التاريخ المختار
+  const loadAttendance = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("attendance_log")
+      .select("member_id")
+      .eq("attended_on", date);
+    const set = new Set<string>();
+    for (const r of (data as Pick<AttendanceRow, "member_id">[]) ?? [])
+      set.add(r.member_id);
+    setPresentToday(set);
+  }, [date]);
+
   useEffect(() => {
     load();
     const supabase = createClient();
     const channel = supabase
       .channel("data_page_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "members" },
-        () => load()
+      .on("postgres_changes", { event: "*", schema: "public", table: "members" }, () =>
+        load()
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "classes" },
-        () => load()
+      .on("postgres_changes", { event: "*", schema: "public", table: "classes" }, () =>
+        load()
       )
       .subscribe();
     return () => {
@@ -59,20 +138,80 @@ export default function DataPage() {
     };
   }, [load]);
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return members;
-    const needle = q.toLowerCase();
-    return members.filter((m) => {
-      const hay = `${m.name ?? ""} ${m.code} ${m.phone ?? ""}`.toLowerCase();
-      return hay.includes(needle);
-    });
-  }, [members, q]);
+  // أعِد جلب الحضور كلما تغيّر التاريخ المختار
+  useEffect(() => {
+    loadAttendance();
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`attendance_${date}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance_log" },
+        () => loadAttendance()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [date, loadAttendance]);
 
-  // Group members under each class (in class order), plus a trailing "no class" group.
+  // toast auto-hide
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // 1) فلترة: بحث + الفصل المختار + فلاتر الإظهار المتعددة.
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return members.filter((m) => {
+      if (needle) {
+        const hay = `${m.name ?? ""} ${m.code} ${m.phone ?? ""}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      if (controls.classId !== "all" && m.class_id !== controls.classId) return false;
+      for (const f of controls.filters) {
+        if (!passesFilter(m, f)) return false;
+      }
+      return true;
+    });
+  }, [members, q, controls.classId, controls.filters]);
+
+  // 2) ترتيب حسب المفتاح والاتجاه.
+  const sorted = useMemo(() => {
+    const dir = controls.sortDir === "asc" ? 1 : -1;
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (controls.sortKey) {
+        case "name":
+          cmp = (a.name || "").localeCompare(b.name || "", "ar");
+          break;
+        case "attendance_days":
+          cmp = (a.attendance_count ?? 0) - (b.attendance_count ?? 0);
+          break;
+        case "balance":
+          cmp = (a.opening_balance ?? 0) - (b.opening_balance ?? 0);
+          break;
+        case "created_at":
+          cmp =
+            new Date(a.created_at ?? 0).getTime() -
+            new Date(b.created_at ?? 0).getTime();
+          break;
+      }
+      return cmp * dir;
+    });
+    return arr;
+  }, [filtered, controls.sortKey, controls.sortDir]);
+
+  // 3) عند "كل الفصول": تجميع. عند فصل محدد: قائمة مسطّحة.
+  const grouped = controls.classId === "all";
   const groups = useMemo<Group[]>(() => {
+    if (!grouped) return [];
     const byClass = new Map<string, MemberRow[]>();
     const noClass: MemberRow[] = [];
-    for (const m of filtered) {
+    for (const m of sorted) {
       if (m.class_id) {
         const arr = byClass.get(m.class_id) ?? [];
         arr.push(m);
@@ -87,16 +226,67 @@ export default function DataPage() {
     }));
     if (noClass.length > 0) result.push({ cls: null, members: noClass });
     return result;
-  }, [filtered, classes]);
+  }, [grouped, sorted, classes]);
 
   const toggle = (key: string) =>
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // معالجة نتيجة العملية (toast + تحديث محلي سريع)
+  const applyResult = (res: OpResult) => {
+    setToast({ ok: res.ok, text: res.message });
+    if (res.ok) {
+      setMembers((prev) =>
+        prev.map((m) => (m.id === res.member.id ? res.member : m))
+      );
+    }
+  };
+
+  // تنفيذ الوظيفة على مخدوم محدد
+  const runAction = useCallback(
+    async (m: MemberRow, action: ActionKey) => {
+      if (busyId) return;
+      // وظائف النقاط تفتح dialog لإدخال القيمة والسبب
+      if (isPointsAction(action)) {
+        setPointsFor(m);
+        return;
+      }
+      setBusyId(m.id);
+      try {
+        const res =
+          action === "attendance"
+            ? await markAttendance(m.id, date, controls.points)
+            : await unmarkAttendance(m.id, date, controls.points);
+        applyResult(res);
+        if (res.ok) loadAttendance();
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [busyId, date, loadAttendance, controls.points]
+  );
+
+  // تأكيد dialog النقاط
+  const confirmPoints = async (amount: number, reason: string) => {
+    if (!pointsFor) return;
+    setBusyId(pointsFor.id);
+    try {
+      const res = await adjustBalance(pointsFor.id, amount, reason, date);
+      applyResult(res);
+      if (res.ok) setPointsFor(null);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div>
       <PageHero title="البيانات" subtitle="إدارة بيانات المخدومين" icon={Database} />
 
-      <div className="animate-fade-up mb-3 rounded-3xl bg-surface p-3 shadow-card border border-white/40">
+      {/* شريط التحكم: الفصل / ترتيب حسب / إظهار / الوظيفة */}
+      <DataControls classes={classes} value={controls} onChange={setControls} />
+
+      {/* بحث + إضافة */}
+      <div className="animate-fade-up mb-4 rounded-3xl bg-surface p-3 shadow-card border border-white/40">
         <div className="flex items-center gap-2">
           <div className="flex flex-1 items-center gap-2 rounded-2xl bg-surface-muted px-3 py-2.5">
             <Search className="h-4 w-4 text-ink-muted" />
@@ -126,12 +316,13 @@ export default function DataPage() {
           <p className="text-sm font-semibold text-ink">لا يوجد مخدومين بعد</p>
           <p className="mt-1 text-xs text-ink-muted">اضغط + لإضافة مخدوم</p>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="animate-fade-up rounded-3xl bg-surface p-8 text-center shadow-card border border-white/40">
           <Search className="mx-auto mb-2 h-10 w-10 text-primary" />
-          <p className="text-sm font-semibold text-ink">لا نتائج للبحث</p>
+          <p className="text-sm font-semibold text-ink">لا نتائج مطابقة</p>
+          <p className="mt-1 text-xs text-ink-muted">جرّب تغيير الفصل أو الفلاتر</p>
         </div>
-      ) : (
+      ) : grouped ? (
         <div className="space-y-4">
           {groups.map((g) => {
             const key = g.cls?.id ?? "__none__";
@@ -139,15 +330,13 @@ export default function DataPage() {
             const primary = g.cls?.color_primary ?? "#6d5dfc";
             const accent = g.cls?.color_accent ?? "#f15bb5";
             const isCollapsed = collapsed[key];
-            // Hide empty class sections when searching to reduce noise,
-            // but always show them otherwise so the structure is visible.
-            if (g.members.length === 0 && q.trim()) return null;
+            const filtering = q.trim() || controls.filters.length > 0;
+            if (g.members.length === 0 && filtering) return null;
             return (
               <section
                 key={key}
                 className="animate-fade-up overflow-hidden rounded-3xl bg-surface shadow-card border border-white/40"
               >
-                {/* class header */}
                 <button
                   onClick={() => toggle(key)}
                   className="flex w-full items-center gap-3 p-3 text-right active:scale-[0.99]"
@@ -174,7 +363,6 @@ export default function DataPage() {
                   />
                 </button>
 
-                {/* members in this class */}
                 {!isCollapsed && (
                   <div className="space-y-2 px-3 pb-3">
                     {g.members.length === 0 ? (
@@ -182,7 +370,16 @@ export default function DataPage() {
                         لا يوجد مخدومين في هذا الفصل
                       </p>
                     ) : (
-                      g.members.map((m) => <MemberItem key={m.id} m={m} />)
+                      g.members.map((m) => (
+                        <MemberItem
+                          key={m.id}
+                          m={m}
+                          action={controls.action}
+                          present={presentToday.has(m.id)}
+                          busy={busyId === m.id}
+                          onRun={() => runAction(m, controls.action)}
+                        />
+                      ))
                     )}
                   </div>
                 )}
@@ -190,15 +387,81 @@ export default function DataPage() {
             );
           })}
         </div>
+      ) : (
+        <div className="animate-fade-up rounded-3xl bg-surface p-3 shadow-card border border-white/40">
+          <div className="space-y-2">
+            {sorted.map((m) => (
+              <MemberItem
+                key={m.id}
+                m={m}
+                action={controls.action}
+                present={presentToday.has(m.id)}
+                busy={busyId === m.id}
+                onRun={() => runAction(m, controls.action)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* dialog النقاط */}
+      <PointsDialog
+        open={!!pointsFor}
+        mode={controls.action === "deduct_points" ? "deduct" : "add"}
+        memberName={pointsFor?.name || ""}
+        defaultAmount={controls.points}
+        busy={!!busyId}
+        onClose={() => setPointsFor(null)}
+        onConfirm={confirmPoints}
+      />
+
+      {/* toast */}
+      {toast && (
+        <div className="fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
+          <div
+            className={`animate-fade-up rounded-2xl px-4 py-2.5 text-sm font-semibold text-white shadow-soft ${
+              toast.ok ? "bg-emerald-600" : "bg-rose-600"
+            }`}
+          >
+            {toast.text}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function MemberItem({ m }: { m: MemberRow }) {
+/** زر تنفيذ الوظيفة حسب نوعها. */
+function actionMeta(action: ActionKey) {
+  switch (action) {
+    case "attendance":
+      return { Icon: CalendarCheck, label: "حضور" };
+    case "unattendance":
+      return { Icon: CalendarX, label: "إلغاء" };
+    case "add_points":
+      return { Icon: Coins, label: "+ نقاط" };
+    case "deduct_points":
+      return { Icon: Coins, label: "- نقاط" };
+  }
+}
+
+function MemberItem({
+  m,
+  action,
+  present,
+  busy,
+  onRun,
+}: {
+  m: MemberRow;
+  action: ActionKey;
+  present: boolean;
+  busy: boolean;
+  onRun: () => void;
+}) {
+  const { Icon, label } = actionMeta(action);
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-surface-muted p-2.5">
-      <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full btn-gradient text-white">
+      <div className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full btn-gradient text-white">
         {m.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
@@ -206,19 +469,39 @@ function MemberItem({ m }: { m: MemberRow }) {
           <User className="h-5 w-5" />
         )}
       </div>
+
       <div className="min-w-0 flex-1">
         <p className="truncate font-bold text-ink">{m.name || "—"}</p>
-        <p className="truncate text-xs text-ink-muted" dir="ltr">
-          {m.phone || m.code}
-        </p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+          {/* badge عدد مرات الحضور */}
+          <span className="inline-flex items-center gap-1 rounded-lg bg-primary-soft px-1.5 py-0.5 text-[10px] font-bold text-primary">
+            <CalendarCheck className="h-3 w-3" />
+            {m.attendance_count ?? 0} حضور
+          </span>
+          {/* badge الرصيد/النقاط */}
+          <span className="inline-flex items-center gap-1 rounded-lg bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold text-accent">
+            <Coins className="h-3 w-3" />
+            {m.opening_balance ?? 0}
+          </span>
+          {/* علامة حضور اليوم المختار */}
+          {present && (
+            <span className="rounded-lg bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+              ✓ حضر اليوم
+            </span>
+          )}
+        </div>
       </div>
-      <span
-        className={`rounded-lg px-2 py-1 text-[10px] font-bold ${
-          m.gender === "male" ? "bg-primary-soft text-primary" : "bg-accent-soft text-accent"
-        }`}
+
+      {/* زر تنفيذ الوظيفة على هذا المخدوم */}
+      <button
+        onClick={onRun}
+        disabled={busy}
+        title={label}
+        className="flex shrink-0 items-center gap-1 rounded-xl btn-gradient px-2.5 py-2 text-[11px] font-bold text-white shadow-soft active:scale-95 disabled:opacity-60"
       >
-        {m.gender === "male" ? "ذكر" : "أنثى"}
-      </span>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+        <span className="hidden xs:inline">{label}</span>
+      </button>
     </div>
   );
 }

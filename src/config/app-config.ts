@@ -11,6 +11,8 @@ export type Branding = {
   serviceName: string; // اسم الخدمة
   slogan: string; // الشعار
   codeWord: string; // كلمة الكود (prefix لأكواد المخدومين) مثل StMary
+  dailyPointsMax: number; // الحد الأقصى لإضافة النقاط في اليوم (0 = غير محدود)
+  defaultPoints: number; // عدد النقاط الافتراضي بجانب "الوظيفة" (حضور/إضافة/خصم)
   colorPrimary: string; // hex, e.g. #6d5dfc
   colorAccent: string; // hex, e.g. #f15bb5
   logoPath: string | null; // storage path (for cleanup)
@@ -22,6 +24,8 @@ export const DEFAULT_BRANDING: Branding = {
   serviceName: "خدمة الكنيسة",
   slogan: "نخدم بمحبة ونعمل بإخلاص",
   codeWord: "StMary",
+  dailyPointsMax: 0,
+  defaultPoints: 1,
   colorPrimary: "#6d5dfc",
   colorAccent: "#f15bb5",
   logoPath: null,
@@ -59,6 +63,14 @@ export function rowToBranding(row: Record<string, unknown>): Branding {
     serviceName: (row.service_name as string) ?? DEFAULT_BRANDING.serviceName,
     slogan: (row.slogan as string) ?? DEFAULT_BRANDING.slogan,
     codeWord: (row.code_word as string) ?? DEFAULT_BRANDING.codeWord,
+    dailyPointsMax:
+      row.daily_points_max != null
+        ? Number(row.daily_points_max)
+        : DEFAULT_BRANDING.dailyPointsMax,
+    defaultPoints:
+      row.default_points != null
+        ? Number(row.default_points)
+        : DEFAULT_BRANDING.defaultPoints,
     colorPrimary: (row.color_primary as string) ?? DEFAULT_BRANDING.colorPrimary,
     colorAccent: (row.color_accent as string) ?? DEFAULT_BRANDING.colorAccent,
     logoPath: (row.logo_path as string) ?? null,
@@ -73,6 +85,8 @@ export function brandingToRow(b: Partial<Branding>): Record<string, unknown> {
   if (b.serviceName !== undefined) row.service_name = b.serviceName;
   if (b.slogan !== undefined) row.slogan = b.slogan;
   if ((b as Partial<Branding>).codeWord !== undefined) row.code_word = b.codeWord;
+  if (b.dailyPointsMax !== undefined) row.daily_points_max = b.dailyPointsMax;
+  if (b.defaultPoints !== undefined) row.default_points = b.defaultPoints;
   if (b.colorPrimary !== undefined) row.color_primary = b.colorPrimary;
   if (b.colorAccent !== undefined) row.color_accent = b.colorAccent;
   if (b.logoPath !== undefined) row.logo_path = b.logoPath;

@@ -5,6 +5,10 @@ import { Header } from "./header";
 import { Drawer } from "./drawer";
 import { DateSheet } from "./date-sheet";
 import { BottomNav } from "./bottom-nav";
+import {
+  SelectedDateProvider,
+  useSelectedDate,
+} from "@/context/selected-date-context";
 
 function formatArabicDate(iso: string): string {
   try {
@@ -20,16 +24,16 @@ function formatArabicDate(iso: string): string {
 
 export type UserProfile = { name: string; email: string } | null;
 
-export function AppShell({
+function Shell({
   children,
-  profile = null,
+  profile,
 }: {
   children: ReactNode;
-  profile?: UserProfile;
+  profile: UserProfile;
 }) {
+  const { date, setDate } = useSelectedDate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const arabicDate = useMemo(() => formatArabicDate(date), [date]);
 
@@ -54,5 +58,19 @@ export function AppShell({
         />
       </div>
     </div>
+  );
+}
+
+export function AppShell({
+  children,
+  profile = null,
+}: {
+  children: ReactNode;
+  profile?: UserProfile;
+}) {
+  return (
+    <SelectedDateProvider>
+      <Shell profile={profile}>{children}</Shell>
+    </SelectedDateProvider>
   );
 }
