@@ -1,6 +1,6 @@
 -- =====================================================================
 --  schema_full.sql  —  Combined database build (from scratch → latest)
---  Up to version: 0004
+--  Up to version: 0005
 --  ---------------------------------------------------------------------
 --  Running this ONE file on an EMPTY Supabase project builds the whole
 --  database to the latest version. It is fully idempotent (safe to
@@ -48,6 +48,8 @@ create table if not exists public.app_settings (
   code_word      text not null default 'StMary',
   -- daily points cap (added in 0004): 0 = unlimited
   daily_points_max numeric(12,2) not null default 0,
+  -- default points number (added in 0005): used by attendance / add / remove
+  default_points numeric(12,2) not null default 1,
   updated_by     uuid references auth.users(id) on delete set null,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
@@ -58,6 +60,8 @@ alter table public.app_settings
   add column if not exists code_word text not null default 'StMary';
 alter table public.app_settings
   add column if not exists daily_points_max numeric(12,2) not null default 0;
+alter table public.app_settings
+  add column if not exists default_points numeric(12,2) not null default 1;
 
 -- Seed exactly one settings row.
 insert into public.app_settings (service_name)
@@ -266,8 +270,8 @@ begin
   end if;
 end $$;
 
--- RPC: mark_attendance — تسجيل حضور (ذرّي، يمنع التكرار)
-create or replace function public.mark_attendance(p_member_id uuid, p_date date)
+-- RPC: mark_attendance — تسجيل حضور + إضافة نقاط (ذرّي، يمنع التكرار)
+create or replace function public.mark_attendance(p_member_id uuid, p_date date, p_points numeric default 0)
 returns public.members language plpgsql security invoker as $$
 declare v_inserted boolean := false; v_row public.members;
 begin
@@ -276,24 +280,36 @@ begin
   on conflict (member_id, attended_on) do nothing;
   get diagnostics v_inserted = row_count;
   if v_inserted then
-    update public.members set attendance_count = attendance_count + 1
+    update public.members
+      set attendance_count = attendance_count + 1,
+          opening_balance  = opening_balance + coalesce(p_points, 0)
       where id = p_member_id returning * into v_row;
+    if coalesce(p_points, 0) <> 0 then
+      insert into public.balance_log (member_id, amount, reason, created_by)
+      values (p_member_id, p_points, 'حضور', auth.uid());
+    end if;
   else
     select * into v_row from public.members where id = p_member_id;
   end if;
   return v_row;
 end; $$;
 
--- RPC: unmark_attendance — إلغاء حضور اليوم (ذرّي)
-create or replace function public.unmark_attendance(p_member_id uuid, p_date date)
+-- RPC: unmark_attendance — إلغاء حضور اليوم + خصم النقاط (ذرّي)
+create or replace function public.unmark_attendance(p_member_id uuid, p_date date, p_points numeric default 0)
 returns public.members language plpgsql security invoker as $$
 declare v_deleted boolean := false; v_row public.members;
 begin
   delete from public.attendance_log where member_id = p_member_id and attended_on = p_date;
   get diagnostics v_deleted = row_count;
   if v_deleted then
-    update public.members set attendance_count = greatest(attendance_count - 1, 0)
+    update public.members
+      set attendance_count = greatest(attendance_count - 1, 0),
+          opening_balance  = opening_balance - coalesce(p_points, 0)
       where id = p_member_id returning * into v_row;
+    if coalesce(p_points, 0) <> 0 then
+      insert into public.balance_log (member_id, amount, reason, created_by)
+      values (p_member_id, -p_points, 'إلغاء حضور', auth.uid());
+    end if;
   else
     select * into v_row from public.members where id = p_member_id;
   end if;
@@ -325,4 +341,4 @@ begin
   return v_row;
 end; $$;
 
--- Done. Database is at version 0004.
+-- Done. Database is at version 0005.

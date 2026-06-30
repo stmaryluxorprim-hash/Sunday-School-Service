@@ -12,32 +12,50 @@ function parseDailyLimit(msg: string): { max: number; used: number } | null {
   return { max: Number(m[1]), used: Number(m[2]) };
 }
 
-/** تسجيل حضور للمخدوم في التاريخ المحدد (يمنع التكرار). */
+/**
+ * تسجيل حضور للمخدوم في التاريخ المحدد (يمنع التكرار)
+ * ويضيف `points` نقطة للرصيد (مرّة واحدة فقط لذلك اليوم).
+ */
 export async function markAttendance(
   memberId: string,
-  date: string
+  date: string,
+  points = 0
 ): Promise<OpResult> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("mark_attendance", {
     p_member_id: memberId,
     p_date: date,
+    p_points: points,
   });
   if (error) return { ok: false, message: "تعذّر تسجيل الحضور" };
-  return { ok: true, member: data as MemberRow, message: "تم تسجيل الحضور" };
+  return {
+    ok: true,
+    member: data as MemberRow,
+    message: points ? `تم تسجيل الحضور (+${points})` : "تم تسجيل الحضور",
+  };
 }
 
-/** إلغاء حضور التاريخ المحدد. */
+/**
+ * إلغاء حضور التاريخ المحدد وخصم `points` من الرصيد
+ * (مرّة واحدة فقط إن كان هناك حضور مسجّل لذلك اليوم).
+ */
 export async function unmarkAttendance(
   memberId: string,
-  date: string
+  date: string,
+  points = 0
 ): Promise<OpResult> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("unmark_attendance", {
     p_member_id: memberId,
     p_date: date,
+    p_points: points,
   });
   if (error) return { ok: false, message: "تعذّر إلغاء الحضور" };
-  return { ok: true, member: data as MemberRow, message: "تم إلغاء حضور اليوم" };
+  return {
+    ok: true,
+    member: data as MemberRow,
+    message: points ? `تم إلغاء حضور اليوم (-${points})` : "تم إلغاء حضور اليوم",
+  };
 }
 
 /** تعديل الرصيد (موجب = إضافة، سالب = خصم) مع سبب وتاريخ لحدّ اليوم. */

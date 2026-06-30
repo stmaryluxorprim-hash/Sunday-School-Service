@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Minus, Loader2 } from "lucide-react";
 
 export function PointsDialog({
   open,
   mode,
   memberName,
+  defaultAmount,
   busy,
   onClose,
   onConfirm,
@@ -14,12 +15,22 @@ export function PointsDialog({
   open: boolean;
   mode: "add" | "deduct";
   memberName: string;
+  /** القيمة المبدئية (من عدد النقاط بجانب “الوظيفة”). */
+  defaultAmount?: number;
   busy?: boolean;
   onClose: () => void;
   onConfirm: (amount: number, reason: string) => void;
 }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+
+  // عند فتح النافذة: املأ القيمة المبدئية (العدد الافتراضي) وامسح السبب.
+  useEffect(() => {
+    if (open) {
+      setAmount(defaultAmount ? String(defaultAmount) : "");
+      setReason("");
+    }
+  }, [open, defaultAmount]);
 
   if (!open) return null;
 

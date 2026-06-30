@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Database,
@@ -38,6 +38,7 @@ import {
   OpResult,
 } from "@/lib/data/operations";
 import { useSelectedDate } from "@/context/selected-date-context";
+import { useSettings } from "@/context/settings-context";
 
 type Group = {
   cls: ClassRow | null; // null = members with no class
@@ -70,6 +71,7 @@ function passesFilter(m: MemberRow, f: ShowFilter): boolean {
 
 export default function DataPage() {
   const { date } = useSelectedDate(); // التاريخ المختار من الهيدر (YYYY-MM-DD)
+  const { branding, ready: settingsReady } = useSettings();
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   // مجموعة معرّفات من حضر في التاريخ المختار
@@ -78,6 +80,16 @@ export default function DataPage() {
   const [q, setQ] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [controls, setControls] = useState<ControlsState>(DEFAULT_CONTROLS);
+  // بمجرد جاهزية الإعدادات: ابدأ بعدد النقاط الافتراضي من الهوية (مرّة واحدة).
+  const pointsSeeded = useRef(false);
+  useEffect(() => {
+    if (!settingsReady || pointsSeeded.current) return;
+    pointsSeeded.current = true;
+    setControls((prev) => ({
+      ...prev,
+      points: branding.defaultPoints ?? prev.points,
+    }));
+  }, [settingsReady, branding.defaultPoints]);
 
   // حالة العملية الجارية + رسالة (toast)
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -242,15 +254,15 @@ export default function DataPage() {
       try {
         const res =
           action === "attendance"
-            ? await markAttendance(m.id, date)
-            : await unmarkAttendance(m.id, date);
+            ? await markAttendance(m.id, date, controls.points)
+            : await unmarkAttendance(m.id, date, controls.points);
         applyResult(res);
         if (res.ok) loadAttendance();
       } finally {
         setBusyId(null);
       }
     },
-    [busyId, date, loadAttendance]
+    [busyId, date, loadAttendance, controls.points]
   );
 
   // تأكيد dialog النقاط
@@ -397,6 +409,7 @@ export default function DataPage() {
         open={!!pointsFor}
         mode={controls.action === "deduct_points" ? "deduct" : "add"}
         memberName={pointsFor?.name || ""}
+        defaultAmount={controls.points}
         busy={!!busyId}
         onClose={() => setPointsFor(null)}
         onConfirm={confirmPoints}

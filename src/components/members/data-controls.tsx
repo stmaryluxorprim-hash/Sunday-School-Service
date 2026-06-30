@@ -10,6 +10,7 @@ import {
   Eye,
   Wand2,
   Check,
+  Coins,
 } from "lucide-react";
 import {
   ClassRow,
@@ -29,6 +30,7 @@ export type ControlsState = {
   sortDir: SortDir;
   filters: ShowFilter[];
   action: ActionKey;
+  points: number; // عدد النقاط بجانب "الوظيفة" (حضور/إضافة/خصم)
 };
 
 export const DEFAULT_CONTROLS: ControlsState = {
@@ -37,6 +39,7 @@ export const DEFAULT_CONTROLS: ControlsState = {
   sortDir: "asc",
   filters: [],
   action: "attendance",
+  points: 1,
 };
 
 const selBase =
@@ -183,21 +186,39 @@ export function DataControls({
         </div>
       )}
 
-      {/* 4) الوظيفة */}
+      {/* 4) الوظيفة + عدد النقاط (بجانبها مثل زر الترتيب) */}
       <Row icon={Wand2} label="الوظيفة">
-        <div className="relative">
-          <select
-            className={selBase}
-            value={value.action}
-            onChange={(e) => set({ action: e.target.value as ActionKey })}
-          >
-            {ACTION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-ink-muted" />
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <select
+              className={selBase}
+              value={value.action}
+              onChange={(e) => set({ action: e.target.value as ActionKey })}
+            >
+              {ACTION_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-ink-muted" />
+          </div>
+          {/* عدد النقاط — يُستخدم في كل الوظائف (حضور/إضافة/خصم) */}
+          <div className="relative shrink-0">
+            <input
+              value={String(value.points)}
+              onChange={(e) => {
+                const clean = e.target.value.replace(/[^\d.]/g, "");
+                set({ points: clean === "" ? 0 : Number(clean) });
+              }}
+              inputMode="decimal"
+              dir="ltr"
+              title="عدد النقاط"
+              aria-label="عدد النقاط"
+              className="h-11 w-16 rounded-2xl border border-primary-soft bg-surface-muted text-center text-sm font-bold text-primary outline-none focus:border-primary"
+            />
+            <Coins className="pointer-events-none absolute -top-1.5 -left-1.5 h-4 w-4 rounded-full bg-surface p-0.5 text-accent shadow-soft" />
+          </div>
         </div>
       </Row>
     </div>
