@@ -36,10 +36,30 @@ export type MemberRow = {
   notes: string | null;
   photo_path: string | null;
   photo_url: string | null;
-  opening_balance: number;
+  opening_balance: number; // الرصيد الجاري (يتعدّل مع عمليات النقاط)
+  attendance_count: number; // إجمالي عدد مرات الحضور
   gender: Gender;
   class_id: string | null;
   created_at?: string;
+};
+
+/** صف سجل الحضور. */
+export type AttendanceRow = {
+  id: string;
+  member_id: string;
+  attended_on: string; // YYYY-MM-DD
+  created_at?: string;
+  created_by?: string | null;
+};
+
+/** صف سجل النقاط. */
+export type BalanceLogRow = {
+  id: string;
+  member_id: string;
+  amount: number; // موجب = إضافة، سالب = خصم
+  reason: string | null;
+  created_at?: string;
+  created_by?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -84,11 +104,18 @@ export const SHOW_FILTERS: { value: ShowFilter; label: string }[] = [
 ];
 
 /** مفاتيح الوظائف في صف "الوظيفة" (قابلة للتوسعة لاحقاً). */
-export type ActionKey = "attendance";
+export type ActionKey =
+  | "attendance" // تسجيل حضور
+  | "unattendance" // إلغاء حضور اليوم
+  | "add_points" // إضافة نقاط
+  | "deduct_points"; // خصم نقاط
 
 /** الوظائف المتاحة الآن — تُضاف وظائف أخرى لاحقاً. */
 export const ACTION_OPTIONS: { value: ActionKey; label: string }[] = [
-  { value: "attendance", label: "الحضور" },
+  { value: "attendance", label: "تسجيل حضور" },
+  { value: "unattendance", label: "إلغاء حضور اليوم" },
+  { value: "add_points", label: "إضافة نقاط" },
+  { value: "deduct_points", label: "خصم نقاط" },
 ];
 
 /** Generate a member code: codeWord + current epoch milliseconds. */

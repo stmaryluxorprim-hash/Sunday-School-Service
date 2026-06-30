@@ -20,6 +20,9 @@ export default function IdentityPage() {
   const [name, setName] = useState(branding.serviceName);
   const [slogan, setSlogan] = useState(branding.slogan);
   const [codeWord, setCodeWord] = useState(branding.codeWord);
+  const [dailyPointsMax, setDailyPointsMax] = useState(
+    String(branding.dailyPointsMax ?? 0)
+  );
   const [primary, setPrimary] = useState(branding.colorPrimary);
   const [accent, setAccent] = useState(branding.colorAccent);
 
@@ -41,6 +44,7 @@ export default function IdentityPage() {
         serviceName: name.trim() || "خدمة الكنيسة",
         slogan: slogan.trim(),
         codeWord: codeWord.trim().replace(/\s+/g, "") || "StMary",
+        dailyPointsMax: Math.max(0, Number(dailyPointsMax) || 0),
         colorPrimary: primary,
         colorAccent: accent,
       });
@@ -156,6 +160,24 @@ export default function IdentityPage() {
           />
           <p className="mt-1 text-[11px] text-ink-muted">
             مثال على الكود الناتج: <span dir="ltr">{(codeWord.trim().replace(/\s+/g, "") || "StMary")}1759503656922</span>
+          </p>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">
+            الحد الأقصى للنقاط في اليوم (للمخدوم الواحد)
+          </label>
+          <input
+            value={dailyPointsMax}
+            onChange={(e) =>
+              setDailyPointsMax(e.target.value.replace(/[^\d.]/g, ""))
+            }
+            inputMode="decimal"
+            dir="ltr"
+            placeholder="0"
+            className="w-full rounded-2xl border border-primary-soft bg-surface-muted px-4 py-2.5 text-ink outline-none focus:border-primary"
+          />
+          <p className="mt-1 text-[11px] text-ink-muted">
+            أقصى مجموع نقاط يمكن إضافتها للمخدوم في اليوم الواحد. اكتب 0 لإلغاء الحد (غير محدود).
           </p>
         </div>
       </div>

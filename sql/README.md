@@ -13,7 +13,7 @@
 2. انسخ محتوى الملف المطلوب.
 3. اضغط **Run** ▶️.
 
-> القاعدة الحالية متطابقة حتى الإصدار **0003**.
+> القاعدة الحالية متطابقة حتى الإصدار **0004**.
 
 ---
 
@@ -58,5 +58,6 @@
 | 0001 | `0001_settings.sql` | جدول `app_settings` + RLS + Realtime + Storage bucket `app-images` + سياساته |
 | 0002 | `0002_members_classes.sql` | عمود `code_word` + جدول `classes` + جدول `members` (عمود `name` واحد + `birth_date` واحد + `phone` بصيغة `+2…`) + RLS + Realtime + triggers |
 | 0003 | `0003_members_single_fields.sql` | ترحيل توافقي: يحوّل `members` من الأعمدة المقسّمة القديمة (لو موجودة) إلى `name` + `birth_date`، ويطبّع `phone` لصيغة `+2…`. (لا تأثير لو 0002 الحالي متطبّق بالفعل) |
+| 0004 | `0004_attendance_points.sql` | الحضور والنقاط: عمود `members.attendance_count` + `app_settings.daily_points_max` + جدولا `attendance_log` و `balance_log` + دوال RPC ذرّية (`mark_attendance` / `unmark_attendance` / `adjust_balance` مع حد أقصى يومي للنقاط) |
 
-> **الملف المجمّع:** [`schema_full.sql`](./schema_full.sql) — يبني القاعدة من الصفر لأحدث نسخة (Up to 0003).
+> **الملف المجمّع:** [`schema_full.sql`](./schema_full.sql) — يبني القاعدة من الصفر لأحدث نسخة (Up to 0004).

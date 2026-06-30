@@ -1,6 +1,6 @@
 -- =====================================================================
 --  schema_full.sql  —  Combined database build (from scratch → latest)
---  Up to version: 0003
+--  Up to version: 0004
 --  ---------------------------------------------------------------------
 --  Running this ONE file on an EMPTY Supabase project builds the whole
 --  database to the latest version. It is fully idempotent (safe to
@@ -46,14 +46,18 @@ create table if not exists public.app_settings (
   dark_mode      boolean not null default false,
   -- code word: prefix for member codes (added in 0002, kept here for full build)
   code_word      text not null default 'StMary',
+  -- daily points cap (added in 0004): 0 = unlimited
+  daily_points_max numeric(12,2) not null default 0,
   updated_by     uuid references auth.users(id) on delete set null,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
 
--- In case app_settings already existed without code_word:
+-- In case app_settings already existed without code_word / daily_points_max:
 alter table public.app_settings
   add column if not exists code_word text not null default 'StMary';
+alter table public.app_settings
+  add column if not exists daily_points_max numeric(12,2) not null default 0;
 
 -- Seed exactly one settings row.
 insert into public.app_settings (service_name)
@@ -145,12 +149,17 @@ create table if not exists public.members (
   photo_path      text,
   photo_url       text,
   opening_balance numeric(12,2) not null default 0,
+  attendance_count integer not null default 0,  -- (0004) إجمالي عدد مرات الحضور
   gender          text not null default 'male' check (gender in ('male','female')),
   class_id        uuid references public.classes(id) on delete set null,
   created_by      uuid references auth.users(id) on delete set null,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+-- (0004) ensure attendance_count exists if members predates this build
+alter table public.members
+  add column if not exists attendance_count integer not null default 0;
 
 create index if not exists idx_members_class_id on public.members(class_id);
 create index if not exists idx_members_code on public.members(code);
@@ -200,4 +209,120 @@ begin
   end if;
 end $$;
 
--- Done. Database is at version 0003.
+-- =====================================================================
+--  [0004] attendance_log + balance_log + atomic RPCs
+-- =====================================================================
+
+-- attendance_log : سجل عمليات الحضور (حضور واحد لكل مخدوم في اليوم)
+create table if not exists public.attendance_log (
+  id          uuid primary key default gen_random_uuid(),
+  member_id   uuid not null references public.members(id) on delete cascade,
+  attended_on date not null,
+  created_at  timestamptz not null default now(),
+  created_by  uuid references auth.users(id) on delete set null,
+  unique (member_id, attended_on)
+);
+create index if not exists idx_attendance_member on public.attendance_log(member_id);
+create index if not exists idx_attendance_date   on public.attendance_log(attended_on);
+
+-- balance_log : سجل عمليات النقاط (إضافة/خصم)
+create table if not exists public.balance_log (
+  id          uuid primary key default gen_random_uuid(),
+  member_id   uuid not null references public.members(id) on delete cascade,
+  amount      numeric(12,2) not null,
+  reason      text,
+  created_at  timestamptz not null default now(),
+  created_by  uuid references auth.users(id) on delete set null
+);
+create index if not exists idx_balance_member on public.balance_log(member_id);
+create index if not exists idx_balance_date   on public.balance_log(created_at);
+
+alter table public.attendance_log enable row level security;
+alter table public.balance_log    enable row level security;
+
+drop policy if exists "attendance_select" on public.attendance_log;
+create policy "attendance_select" on public.attendance_log for select to authenticated using (true);
+drop policy if exists "attendance_insert" on public.attendance_log;
+create policy "attendance_insert" on public.attendance_log for insert to authenticated with check (true);
+drop policy if exists "attendance_delete" on public.attendance_log;
+create policy "attendance_delete" on public.attendance_log for delete to authenticated using (true);
+
+drop policy if exists "balance_select" on public.balance_log;
+create policy "balance_select" on public.balance_log for select to authenticated using (true);
+drop policy if exists "balance_insert" on public.balance_log;
+create policy "balance_insert" on public.balance_log for insert to authenticated with check (true);
+
+alter table public.attendance_log replica identity full;
+alter table public.balance_log    replica identity full;
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public' and tablename='attendance_log') then
+    alter publication supabase_realtime add table public.attendance_log;
+  end if;
+  if not exists (select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public' and tablename='balance_log') then
+    alter publication supabase_realtime add table public.balance_log;
+  end if;
+end $$;
+
+-- RPC: mark_attendance — تسجيل حضور (ذرّي، يمنع التكرار)
+create or replace function public.mark_attendance(p_member_id uuid, p_date date)
+returns public.members language plpgsql security invoker as $$
+declare v_inserted boolean := false; v_row public.members;
+begin
+  insert into public.attendance_log (member_id, attended_on, created_by)
+  values (p_member_id, p_date, auth.uid())
+  on conflict (member_id, attended_on) do nothing;
+  get diagnostics v_inserted = row_count;
+  if v_inserted then
+    update public.members set attendance_count = attendance_count + 1
+      where id = p_member_id returning * into v_row;
+  else
+    select * into v_row from public.members where id = p_member_id;
+  end if;
+  return v_row;
+end; $$;
+
+-- RPC: unmark_attendance — إلغاء حضور اليوم (ذرّي)
+create or replace function public.unmark_attendance(p_member_id uuid, p_date date)
+returns public.members language plpgsql security invoker as $$
+declare v_deleted boolean := false; v_row public.members;
+begin
+  delete from public.attendance_log where member_id = p_member_id and attended_on = p_date;
+  get diagnostics v_deleted = row_count;
+  if v_deleted then
+    update public.members set attendance_count = greatest(attendance_count - 1, 0)
+      where id = p_member_id returning * into v_row;
+  else
+    select * into v_row from public.members where id = p_member_id;
+  end if;
+  return v_row;
+end; $$;
+
+-- RPC: adjust_balance — إضافة/خصم نقاط (ذرّي) + حد أقصى يومي
+create or replace function public.adjust_balance(
+  p_member_id uuid, p_amount numeric, p_reason text, p_date date)
+returns public.members language plpgsql security invoker as $$
+declare v_max numeric; v_today_pos numeric; v_row public.members;
+begin
+  if p_amount is null or p_amount = 0 then raise exception 'amount_zero'; end if;
+  if p_amount > 0 then
+    select coalesce(daily_points_max, 0) into v_max from public.app_settings limit 1;
+    if coalesce(v_max, 0) > 0 then
+      select coalesce(sum(amount), 0) into v_today_pos from public.balance_log
+        where member_id = p_member_id and amount > 0
+          and (created_at at time zone 'UTC')::date = p_date;
+      if v_today_pos + p_amount > v_max then
+        raise exception 'daily_limit_exceeded:%:%', v_max, v_today_pos;
+      end if;
+    end if;
+  end if;
+  insert into public.balance_log (member_id, amount, reason, created_by)
+  values (p_member_id, p_amount, nullif(btrim(coalesce(p_reason,'')), ''), auth.uid());
+  update public.members set opening_balance = opening_balance + p_amount
+    where id = p_member_id returning * into v_row;
+  return v_row;
+end; $$;
+
+-- Done. Database is at version 0004.
