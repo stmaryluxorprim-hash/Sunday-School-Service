@@ -36,9 +36,9 @@ export function Drawer({ open, onClose, profile = null }: DrawerProps) {
         <div className="bg-aurora flex items-center justify-between gap-3 p-5 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
           <div className="relative z-10 flex items-center gap-3">
             <div className="grid h-12 w-12 place-items-center rounded-2xl btn-gradient shadow-soft overflow-hidden">
-              {branding.iconUrl ? (
+              {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={branding.iconUrl} alt="" className="h-full w-full object-cover" />
+                <img src={branding.logoUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <Church className="h-6 w-6 text-white" />
               )}
