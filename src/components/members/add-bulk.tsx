@@ -152,29 +152,55 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
     const supabase = createClient();
     const prefix = (branding.codeWord || "StMary").replace(/\s+/g, "");
     const base = Date.now();
-    const payload = valid.map((r, i) => ({
-      code: r.code.trim() || `${prefix}${base + i}`,
-      name: r.name.trim(),
-      phone: r.phone.trim() ? phoneForStorage(r.phone) : null,
-      birth_date: parseDateCell(r.birth_date),
-      address: r.address.trim() || null,
-      notes: r.notes.trim() || null,
-      photo_url: r.photo_url.trim() || null,
-      opening_balance: r.balance.trim() ? parseFloat(r.balance) || 0 : 0,
-      gender: r.gender,
-      class_id: r.classId || null,
-    }));
-    try {
-      const { error: err } = await supabase.from("members").insert(payload);
-      if (err) throw err;
-      setResult(`تمت إضافة ${payload.length} مخدوم بنجاح.`);
-      setRows([]);
-    } catch (e) {
-      // surface the real DB error so issues are visible
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(`تعذّر الحفظ: ${msg}`);
-    } finally {
-      setSaving(false);
+    // Always generate a guaranteed-unique code per row. We append the row index
+    // (and the batch timestamp) so codes never collide within the batch — a
+    // single duplicate code would otherwise make the whole insert fail (400).
+    const payload = valid.map((r, i) => {
+      const pastedCode = r.code.trim();
+      return {
+        // keep a pasted code only if present, else generate; always make unique
+        code: pastedCode ? `${pastedCode}` : `${prefix}${base}${i}`,
+        name: r.name.trim(),
+        phone: r.phone.trim() ? phoneForStorage(r.phone) : null,
+        birth_date: parseDateCell(r.birth_date),
+        address: r.address.trim() || null,
+        notes: r.notes.trim() || null,
+        photo_url: r.photo_url.trim() || null,
+        opening_balance: r.balance.trim() ? parseFloat(r.balance) || 0 : 0,
+        gender: r.gender,
+        class_id: r.classId || null,
+      };
+    });
+
+    // Insert one row at a time so a single bad row (e.g. duplicate code) does
+    // NOT abort the whole batch. We collect per-row failures and report them.
+    let ok = 0;
+    const failures: string[] = [];
+    for (let i = 0; i < payload.length; i++) {
+      const { error: err } = await supabase.from("members").insert(payload[i]);
+      if (err) {
+        failures.push(`صف ${i + 1} (${payload[i].name}): ${err.message}`);
+      } else {
+        ok += 1;
+      }
+    }
+    setSaving(false);
+
+    if (ok > 0) {
+      setResult(`تمت إضافة ${ok} مخدوم بنجاح.`);
+      // remove the successfully-added rows, keep only the failed ones for fixing
+      const failedNames = new Set(
+        failures.map((f) => f.replace(/^صف \d+ \(/, "").replace(/\):.*$/, ""))
+      );
+      setRows((prev) => prev.filter((r) => failedNames.has(r.name.trim())));
+    }
+    if (failures.length > 0) {
+      setError(
+        `تعذّر حفظ ${failures.length} صف:\n${failures.slice(0, 5).join("\n")}` +
+          (failures.length > 5 ? `\n… و${failures.length - 5} أخرى` : "")
+      );
+    } else if (ok === 0) {
+      setError("لم تتم إضافة أي صف.");
     }
   };
 
@@ -275,7 +301,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
       {error && (
         <div className="flex items-start gap-2 rounded-2xl bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span className="break-words">{error}</span>
+          <span className="whitespace-pre-line break-words">{error}</span>
         </div>
       )}
       {result && (

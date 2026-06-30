@@ -67,13 +67,24 @@ export function classDisplayName(c: Pick<ClassRow, "name" | "stage">): string {
  * Returns the 11-digit local number (e.g. 01273447740) or "" when unusable.
  */
 export function normalizePhone(raw: string): string {
-  let d = (raw || "").replace(/\D/g, "");
-  // strip country code variants: 002xxxxxxxxxxx / 2xxxxxxxxxxx
+  // strip everything except digits (also removes Excel's leading apostrophe,
+  // spaces, +, dashes, non-breaking spaces, Arabic-Indic digits handled below)
+  let d = (raw || "")
+    // convert Arabic-Indic digits ٠-٩ to ASCII 0-9
+    .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x06f0))
+    .replace(/\D/g, "");
+
+  // strip Egyptian country code variants: 002… / 2… (when followed by 0…)
   if (d.startsWith("002")) d = d.slice(3);
-  else if (d.length === 13 && d.startsWith("2")) d = d.slice(1);
-  else if (d.length === 12 && d.startsWith("2")) d = d.slice(1);
-  // 10 digits missing the leading 0 -> add it
+  else if (d.startsWith("0020")) d = d.slice(4);
+  else if (d.length >= 12 && d.startsWith("20")) d = d.slice(2); // 20 + 10 local (no 0)
+  else if ((d.length === 12 || d.length === 13) && d.startsWith("2")) d = d.slice(1);
+
+  // If 10 digits and NOT already an 11-digit local number, add the leading 0.
+  // (Egyptian mobiles are 11 digits: 0 + 10. A 10-digit value is missing the 0.)
   if (d.length === 10 && !d.startsWith("0")) d = "0" + d;
+
   return d.slice(0, 11);
 }
 
