@@ -16,4 +16,5 @@
 | Version | File | Description |
 |---------|------|-------------|
 | 0001 | `0001_settings.sql` | جدول `app_settings` + RLS + Realtime + Storage bucket `app-images` + سياساته |
-| 0002 | `0002_members_classes.sql` | عمود `code_word` + جدولا `classes` و `members` + RLS + Realtime + Cascade |
+| 0002 | `0002_members_classes.sql` | عمود `code_word` + جدول `classes` + جدول `members` + RLS + Realtime + triggers (الإصدار الأصلي بأعمدة الاسم/التاريخ المقسّمة) |
+| 0003 | `0003_members_single_fields.sql` | تحويل `members` إلى عمود `name` واحد + `birth_date` واحد، وتطبيع `phone` لصيغة `+2…` (يَنقل البيانات تلقائياً من الأعمدة القديمة) |
