@@ -42,6 +42,55 @@ export type MemberRow = {
   created_at?: string;
 };
 
+// ---------------------------------------------------------------------------
+//  Operations toolbar — sorting / filters / actions  (صفحة البيانات)
+// ---------------------------------------------------------------------------
+
+/** مفاتيح الترتيب المتاحة في صف "ترتيب حسب". */
+export type SortKey = "name" | "attendance_days" | "balance" | "created_at";
+
+/** اتجاه الترتيب. */
+export type SortDir = "asc" | "desc";
+
+/** تسميات عربية لمفاتيح الترتيب. */
+export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "name", label: "الاسم" },
+  { value: "attendance_days", label: "عدد أيام الحضور" },
+  { value: "balance", label: "الرصيد" },
+  { value: "created_at", label: "تاريخ التسجيل" },
+];
+
+/** مفاتيح فلاتر "إظهار" (متعددة الاختيار). */
+export type ShowFilter =
+  | "male"
+  | "female"
+  | "with_phone"
+  | "no_phone"
+  | "with_photo"
+  | "no_class"
+  | "positive_balance"
+  | "negative_balance";
+
+/** تسميات عربية لفلاتر الإظهار. */
+export const SHOW_FILTERS: { value: ShowFilter; label: string }[] = [
+  { value: "male", label: "ذكور" },
+  { value: "female", label: "إناث" },
+  { value: "with_phone", label: "لديه تليفون" },
+  { value: "no_phone", label: "بدون تليفون" },
+  { value: "with_photo", label: "لديه صورة" },
+  { value: "no_class", label: "بدون فصل" },
+  { value: "positive_balance", label: "رصيد موجب" },
+  { value: "negative_balance", label: "رصيد سالب" },
+];
+
+/** مفاتيح الوظائف في صف "الوظيفة" (قابلة للتوسعة لاحقاً). */
+export type ActionKey = "attendance";
+
+/** الوظائف المتاحة الآن — تُضاف وظائف أخرى لاحقاً. */
+export const ACTION_OPTIONS: { value: ActionKey; label: string }[] = [
+  { value: "attendance", label: "الحضور" },
+];
+
 /** Generate a member code: codeWord + current epoch milliseconds. */
 export function generateMemberCode(codeWord: string): string {
   const clean = (codeWord || "StMary").trim().replace(/\s+/g, "");

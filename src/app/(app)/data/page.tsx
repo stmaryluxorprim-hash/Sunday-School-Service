@@ -10,15 +10,53 @@ import {
   User,
   GraduationCap,
   ChevronDown,
+  CalendarCheck,
 } from "lucide-react";
 import { PageHero } from "@/components/ui/page-card";
 import { createClient } from "@/lib/supabase/client";
-import { MemberRow, ClassRow, classDisplayName } from "@/lib/data/types";
+import { MemberRow, ClassRow, classDisplayName, ShowFilter } from "@/lib/data/types";
+import {
+  DataControls,
+  ControlsState,
+  DEFAULT_CONTROLS,
+} from "@/components/members/data-controls";
 
 type Group = {
   cls: ClassRow | null; // null = members with no class
   members: MemberRow[];
 };
+
+/**
+ * عدد أيام الحضور لمخدوم — placeholder حتى يُبنى جدول الحضور (attendance).
+ * يُستخدم الآن في الترتيب "عدد أيام الحضور".
+ */
+function attendanceDays(_m: MemberRow): number {
+  return 0;
+}
+
+/** هل يجتاز المخدوم فلتر إظهار واحد؟ */
+function passesFilter(m: MemberRow, f: ShowFilter): boolean {
+  switch (f) {
+    case "male":
+      return m.gender === "male";
+    case "female":
+      return m.gender === "female";
+    case "with_phone":
+      return !!m.phone;
+    case "no_phone":
+      return !m.phone;
+    case "with_photo":
+      return !!m.photo_url;
+    case "no_class":
+      return !m.class_id;
+    case "positive_balance":
+      return (m.opening_balance ?? 0) > 0;
+    case "negative_balance":
+      return (m.opening_balance ?? 0) < 0;
+    default:
+      return true;
+  }
+}
 
 export default function DataPage() {
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -26,6 +64,7 @@ export default function DataPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [controls, setControls] = useState<ControlsState>(DEFAULT_CONTROLS);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -59,20 +98,59 @@ export default function DataPage() {
     };
   }, [load]);
 
+  // 1) فلترة: بحث + الفصل المختار + فلاتر الإظهار المتعددة.
   const filtered = useMemo(() => {
-    if (!q.trim()) return members;
-    const needle = q.toLowerCase();
+    const needle = q.trim().toLowerCase();
     return members.filter((m) => {
-      const hay = `${m.name ?? ""} ${m.code} ${m.phone ?? ""}`.toLowerCase();
-      return hay.includes(needle);
+      // بحث
+      if (needle) {
+        const hay = `${m.name ?? ""} ${m.code} ${m.phone ?? ""}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      // الفصل
+      if (controls.classId !== "all" && m.class_id !== controls.classId) return false;
+      // فلاتر الإظهار (يجب اجتياز كل الفلاتر المختارة)
+      for (const f of controls.filters) {
+        if (!passesFilter(m, f)) return false;
+      }
+      return true;
     });
-  }, [members, q]);
+  }, [members, q, controls.classId, controls.filters]);
 
-  // Group members under each class (in class order), plus a trailing "no class" group.
+  // 2) ترتيب حسب المفتاح والاتجاه.
+  const sorted = useMemo(() => {
+    const dir = controls.sortDir === "asc" ? 1 : -1;
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (controls.sortKey) {
+        case "name":
+          cmp = (a.name || "").localeCompare(b.name || "", "ar");
+          break;
+        case "attendance_days":
+          cmp = attendanceDays(a) - attendanceDays(b);
+          break;
+        case "balance":
+          cmp = (a.opening_balance ?? 0) - (b.opening_balance ?? 0);
+          break;
+        case "created_at":
+          cmp =
+            new Date(a.created_at ?? 0).getTime() -
+            new Date(b.created_at ?? 0).getTime();
+          break;
+      }
+      return cmp * dir;
+    });
+    return arr;
+  }, [filtered, controls.sortKey, controls.sortDir]);
+
+  // 3) عند "كل الفصول": نجمّع تحت كل فصل. عند اختيار فصل: قائمة مسطّحة.
+  const grouped = controls.classId === "all";
   const groups = useMemo<Group[]>(() => {
+    if (!grouped) return [];
     const byClass = new Map<string, MemberRow[]>();
     const noClass: MemberRow[] = [];
-    for (const m of filtered) {
+    for (const m of sorted) {
       if (m.class_id) {
         const arr = byClass.get(m.class_id) ?? [];
         arr.push(m);
@@ -87,15 +165,21 @@ export default function DataPage() {
     }));
     if (noClass.length > 0) result.push({ cls: null, members: noClass });
     return result;
-  }, [filtered, classes]);
+  }, [grouped, sorted, classes]);
 
   const toggle = (key: string) =>
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const actionLabel = controls.action === "attendance" ? "تسجيل الحضور" : "تنفيذ";
 
   return (
     <div>
       <PageHero title="البيانات" subtitle="إدارة بيانات المخدومين" icon={Database} />
 
+      {/* شريط التحكم: الفصل / ترتيب حسب / إظهار / الوظيفة */}
+      <DataControls classes={classes} value={controls} onChange={setControls} />
+
+      {/* بحث + إضافة */}
       <div className="animate-fade-up mb-3 rounded-3xl bg-surface p-3 shadow-card border border-white/40">
         <div className="flex items-center gap-2">
           <div className="flex flex-1 items-center gap-2 rounded-2xl bg-surface-muted px-3 py-2.5">
@@ -116,6 +200,21 @@ export default function DataPage() {
         </div>
       </div>
 
+      {/* زر تنفيذ الوظيفة المختارة */}
+      <div className="animate-fade-up mb-4">
+        <Link
+          href={
+            controls.action === "attendance"
+              ? `/scanner${controls.classId !== "all" ? `?class=${controls.classId}` : ""}`
+              : "#"
+          }
+          className="flex items-center justify-center gap-2 rounded-2xl btn-gradient px-4 py-3 text-sm font-bold text-white shadow-soft active:scale-[0.98]"
+        >
+          <CalendarCheck className="h-5 w-5" />
+          {actionLabel}
+        </Link>
+      </div>
+
       {loading ? (
         <div className="grid place-items-center py-16 text-ink-muted">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -126,12 +225,13 @@ export default function DataPage() {
           <p className="text-sm font-semibold text-ink">لا يوجد مخدومين بعد</p>
           <p className="mt-1 text-xs text-ink-muted">اضغط + لإضافة مخدوم</p>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="animate-fade-up rounded-3xl bg-surface p-8 text-center shadow-card border border-white/40">
           <Search className="mx-auto mb-2 h-10 w-10 text-primary" />
-          <p className="text-sm font-semibold text-ink">لا نتائج للبحث</p>
+          <p className="text-sm font-semibold text-ink">لا نتائج مطابقة</p>
+          <p className="mt-1 text-xs text-ink-muted">جرّب تغيير الفصل أو الفلاتر</p>
         </div>
-      ) : (
+      ) : grouped ? (
         <div className="space-y-4">
           {groups.map((g) => {
             const key = g.cls?.id ?? "__none__";
@@ -139,9 +239,9 @@ export default function DataPage() {
             const primary = g.cls?.color_primary ?? "#6d5dfc";
             const accent = g.cls?.color_accent ?? "#f15bb5";
             const isCollapsed = collapsed[key];
-            // Hide empty class sections when searching to reduce noise,
-            // but always show them otherwise so the structure is visible.
-            if (g.members.length === 0 && q.trim()) return null;
+            // أخفِ الفصول الفارغة عند وجود بحث/فلاتر لتقليل الضوضاء.
+            const filtering = q.trim() || controls.filters.length > 0;
+            if (g.members.length === 0 && filtering) return null;
             return (
               <section
                 key={key}
@@ -189,6 +289,15 @@ export default function DataPage() {
               </section>
             );
           })}
+        </div>
+      ) : (
+        // فصل محدد: قائمة مسطّحة مرتّبة
+        <div className="animate-fade-up rounded-3xl bg-surface p-3 shadow-card border border-white/40">
+          <div className="space-y-2">
+            {sorted.map((m) => (
+              <MemberItem key={m.id} m={m} />
+            ))}
+          </div>
         </div>
       )}
     </div>
