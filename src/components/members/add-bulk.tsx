@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Loader2,
   Check,
@@ -91,6 +91,27 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // when true, only rows that have a problem are shown in the list
+  const [onlyProblems, setOnlyProblems] = useState(false);
+
+  // Codes that already exist in the database (lower-cased for comparison).
+  // A pasted/typed code that matches one of these is a duplicate and is
+  // blocked + highlighted just like a bad phone or bad date.
+  const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("members")
+      .select("code")
+      .then(({ data }) => {
+        const set = new Set<string>();
+        (data as { code: string | null }[] | null)?.forEach((m) => {
+          if (m.code) set.add(m.code.trim().toLowerCase());
+        });
+        setExistingCodes(set);
+      });
+  }, []);
 
   const input =
     "w-full rounded-xl border border-primary-soft bg-surface-muted px-3 py-2 text-sm text-ink outline-none focus:border-primary";
@@ -105,11 +126,49 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
     r.birth_date.trim().length > 0 &&
     parseDateCell(r.birth_date, r.dateOrder) === null;
 
+  // How many times each (non-empty) code appears within the current batch —
+  // used to flag in-batch duplicates.
+  const codeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    rows.forEach((r) => {
+      const c = r.code.trim().toLowerCase();
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+    });
+    return counts;
+  }, [rows]);
+
+  // A code is "bad" (duplicate) when it is non-empty AND either:
+  //   - it already exists in the database, or
+  //   - it appears more than once within this batch.
+  const codeBad = (r: DraftRow) => {
+    const c = r.code.trim().toLowerCase();
+    if (!c) return false;
+    return existingCodes.has(c) || (codeCounts.get(c) ?? 0) > 1;
+  };
+
+  // A class MUST be chosen for every row — a missing class is a problem.
+  const classBad = (r: DraftRow) => !r.classId;
+
+  // Whether a row has ANY problem (used by the "show only problems" filter).
+  const rowHasProblem = (r: DraftRow) =>
+    !r.name.trim() || phoneBad(r) || dateBad(r) || codeBad(r) || classBad(r);
+
   const invalidPhones = useMemo(() => rows.filter(phoneBad).length, [rows]);
   const invalidDates = useMemo(() => rows.filter(dateBad).length, [rows]);
   const missingName = useMemo(
     () => rows.filter((r) => !r.name.trim()).length,
     [rows]
+  );
+  const missingClass = useMemo(() => rows.filter(classBad).length, [rows]);
+  const duplicateCodes = useMemo(
+    () => rows.filter(codeBad).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, existingCodes, codeCounts]
+  );
+  const problemCount = useMemo(
+    () => rows.filter(rowHasProblem).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, existingCodes, codeCounts]
   );
 
   const loadPaste = () => {
@@ -175,6 +234,18 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
       );
       return;
     }
+    if (duplicateCodes > 0) {
+      setError(
+        `يوجد ${duplicateCodes} كود مكرّر (مظلّل بالأحمر) — إمّا مستخدم من قبل أو متكرّر داخل القائمة. غيّر الكود أو امسحه (اتركه فارغاً ليُولَّد تلقائياً).`
+      );
+      return;
+    }
+    if (missingClass > 0) {
+      setError(
+        `يوجد ${missingClass} صف بدون فصل (مظلّل بالأحمر). اختر فصلاً لكل صف أو استخدم «تطبيق على الكل».`
+      );
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
     const prefix = (branding.codeWord || "StMary").replace(/\s+/g, "");
@@ -203,15 +274,27 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
     // NOT abort the whole batch. We collect per-row failures and report them.
     let ok = 0;
     const failures: string[] = [];
+    const insertedCodes: string[] = [];
     for (let i = 0; i < payload.length; i++) {
       const { error: err } = await supabase.from("members").insert(payload[i]);
       if (err) {
         failures.push(`صف ${i + 1} (${payload[i].name}): ${err.message}`);
       } else {
         ok += 1;
+        insertedCodes.push(payload[i].code.trim().toLowerCase());
       }
     }
     setSaving(false);
+
+    // Register the codes we just inserted so they are treated as "existing"
+    // (prevents re-adding the same code in a later batch within this session).
+    if (insertedCodes.length > 0) {
+      setExistingCodes((prev) => {
+        const next = new Set(prev);
+        insertedCodes.forEach((c) => next.add(c));
+        return next;
+      });
+    }
 
     if (ok > 0) {
       setResult(`تمت إضافة ${ok} مخدوم بنجاح.`);
@@ -384,6 +467,12 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
               {invalidDates > 0 && (
                 <span className="text-accent"> • {invalidDates} تاريخ خطأ</span>
               )}
+              {duplicateCodes > 0 && (
+                <span className="text-accent"> • {duplicateCodes} كود مكرّر</span>
+              )}
+              {missingClass > 0 && (
+                <span className="text-accent"> • {missingClass} بدون فصل</span>
+              )}
             </p>
             <button
               onClick={() => setRows([])}
@@ -393,18 +482,50 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
             </button>
           </div>
 
-          {rows.map((r, idx) => (
-            <RowCard
-              key={r.uid}
-              row={r}
-              index={idx + 1}
-              classes={classes}
-              phoneBad={phoneBad(r)}
-              dateBad={dateBad(r)}
-              onChange={(patch) => update(r.uid, patch)}
-              onRemove={() => removeRow(r.uid)}
-            />
-          ))}
+          {/* show-only-problems toggle */}
+          <label
+            className={`flex cursor-pointer items-center justify-between rounded-2xl px-4 py-2.5 text-xs font-semibold transition ${
+              onlyProblems ? "bg-accent-soft text-accent" : "bg-surface-muted text-ink-muted"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              عرض الصفوف التي بها مشكلة فقط ({problemCount})
+            </span>
+            <span
+              role="radio"
+              aria-checked={onlyProblems}
+              onClick={() => setOnlyProblems((v) => !v)}
+              className={`relative grid h-5 w-5 place-items-center rounded-full border-2 transition ${
+                onlyProblems ? "border-accent" : "border-ink-muted/40"
+              }`}
+            >
+              {onlyProblems && <span className="h-2.5 w-2.5 rounded-full bg-accent" />}
+            </span>
+          </label>
+
+          {onlyProblems && problemCount === 0 && (
+            <div className="rounded-2xl bg-primary-soft px-4 py-2.5 text-sm font-semibold text-primary">
+              لا توجد مشاكل — كل الصفوف سليمة.
+            </div>
+          )}
+
+          {rows.map((r, idx) =>
+            onlyProblems && !rowHasProblem(r) ? null : (
+              <RowCard
+                key={r.uid}
+                row={r}
+                index={idx + 1}
+                classes={classes}
+                phoneBad={phoneBad(r)}
+                dateBad={dateBad(r)}
+                codeBad={codeBad(r)}
+                classBad={classBad(r)}
+                onChange={(patch) => update(r.uid, patch)}
+                onRemove={() => removeRow(r.uid)}
+              />
+            )
+          )}
         </div>
       )}
 
@@ -412,7 +533,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
       {rows.length > 0 && (
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || problemCount > 0}
           className="flex w-full items-center justify-center gap-2 rounded-2xl btn-gradient py-3.5 text-sm font-bold text-white shadow-soft active:scale-95 disabled:opacity-60"
         >
           {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
@@ -429,6 +550,8 @@ function RowCard({
   classes,
   phoneBad,
   dateBad,
+  codeBad,
+  classBad,
   onChange,
   onRemove,
 }: {
@@ -437,6 +560,8 @@ function RowCard({
   classes: ClassOpt[];
   phoneBad: boolean;
   dateBad: boolean;
+  codeBad: boolean;
+  classBad: boolean;
   onChange: (patch: Partial<DraftRow>) => void;
   onRemove: () => void;
 }) {
@@ -446,10 +571,10 @@ function RowCard({
   const bad = "border-accent text-accent";
 
   // The whole row has a problem if the name is missing, the phone is invalid,
-  // or the birth date is invalid. When any of these is true we highlight the
-  // ENTIRE card in red until the user fixes it.
+  // the birth date is invalid, the code is a duplicate, or no class is chosen.
+  // When any of these is true we highlight the ENTIRE card in red.
   const nameBad = !row.name.trim();
-  const hasProblem = nameBad || phoneBad || dateBad;
+  const hasProblem = nameBad || phoneBad || dateBad || codeBad || classBad;
 
   return (
     <div
@@ -473,6 +598,20 @@ function RowCard({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
+        {/* code spans both columns */}
+        <div className="col-span-2">
+          <label className="mb-1 block text-[10px] font-semibold text-ink-muted">
+            الكود <span className="text-ink-muted/70">(اتركه فارغاً ليُولَّد تلقائياً)</span>
+          </label>
+          <input
+            value={row.code}
+            onChange={(e) => onChange({ code: e.target.value })}
+            dir="ltr"
+            placeholder="StMary1759503656922"
+            className={`${field} ${codeBad ? bad : ok}`}
+          />
+        </div>
+
         {/* name spans both columns */}
         <div className="col-span-2">
           <label className="mb-1 block text-[10px] font-semibold text-ink-muted">الاسم رباعي *</label>
@@ -574,13 +713,13 @@ function RowCard({
         </div>
         {/* per-row class */}
         <div>
-          <label className="mb-1 block text-[10px] font-semibold text-ink-muted">الفصل</label>
+          <label className="mb-1 block text-[10px] font-semibold text-ink-muted">الفصل *</label>
           <select
             value={row.classId}
             onChange={(e) => onChange({ classId: e.target.value })}
-            className={`${field} ${ok}`}
+            className={`${field} ${classBad ? bad : ok}`}
           >
-            <option value="">بدون فصل</option>
+            <option value="">اختر الفصل</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -588,6 +727,16 @@ function RowCard({
         </div>
       </div>
 
+      {classBad && (
+        <p className="mt-1 text-[10px] font-semibold text-accent">
+          اختيار الفصل مطلوب لكل صف
+        </p>
+      )}
+      {codeBad && (
+        <p className="mt-1 text-[10px] font-semibold text-accent">
+          الكود مكرّر — مستخدم من قبل أو متكرّر داخل القائمة. غيّره أو اتركه فارغاً
+        </p>
+      )}
       {phoneBad && (
         <p className="mt-1 text-[10px] font-semibold text-accent">
           التليفون لازم 11 رقم يبدأ بـ 0 (أو 10 بدون الصفر)
