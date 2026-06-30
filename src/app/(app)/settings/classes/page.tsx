@@ -101,7 +101,7 @@ export default function ClassesPage() {
           <p className="mt-1 text-xs text-ink-muted">اضغط + لإضافة فصل</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {classes.map((c) => (
             <div
               key={c.id}

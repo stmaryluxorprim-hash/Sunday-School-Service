@@ -42,7 +42,7 @@ export default function SettingsPage() {
     <div>
       <PageHero title="الإعدادات" subtitle="تخصيص التطبيق" icon={SettingsIcon} />
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {SETTINGS_CARDS.map((card) => {
           const Icon = card.icon;
           const disabled = "disabled" in card && card.disabled;
@@ -66,7 +66,7 @@ export default function SettingsPage() {
           return disabled ? (
             <div key={card.key}>{inner}</div>
           ) : (
-            <Link key={card.key} href={card.href}>
+            <Link key={card.key} href={card.href} className="block">
               {inner}
             </Link>
           );

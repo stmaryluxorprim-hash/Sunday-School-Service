@@ -4,11 +4,18 @@ import { useState, useMemo } from "react";
 import { Loader2, Check, ClipboardPaste, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useSettings } from "@/context/settings-context";
-import { generateMemberCode, isValidPhone, Gender } from "@/lib/data/types";
+import {
+  isValidPhone,
+  Gender,
+  splitName,
+  parseDateString,
+} from "@/lib/data/types";
 
 type ClassOpt = { id: string; name: string };
 
 type ParsedRow = {
+  code: string; // provided code (optional; generated if empty)
+  fullName: string; // raw single-cell name
   name1: string;
   name2: string;
   name3: string;
@@ -19,14 +26,18 @@ type ParsedRow = {
   birth_year: number | null;
   address: string;
   notes: string;
+  photo_url: string;
   opening_balance: number;
 };
 
 /**
  * Bulk add via paste from a table (Excel/Sheets). Expected columns per row
- * (tab or comma separated), in the SAME order as single add:
- *   name1  name2  name3  name4  phone  day  month  year  address  notes  balance
- * Missing trailing columns are fine.
+ * (tab or comma separated), in this order:
+ *   الكود | الاسم رباعي | رقم التليفون | تاريخ الميلاد | العنوان | ملاحظات | صورة | الرصيد
+ * Example:
+ *   StMary1759503656922  كيفين بيشوى اسعد  01273447740  2022-04-02  المنشيه    105
+ * The name is a single cell (auto-split into 4 parts). Date is a single cell
+ * (YYYY-MM-DD or D/M/YYYY). Missing trailing columns are fine.
  */
 function parsePaste(text: string): ParsedRow[] {
   return text
@@ -34,23 +45,29 @@ function parsePaste(text: string): ParsedRow[] {
     .map((l) => l.trim())
     .filter(Boolean)
     .map((line) => {
-      const cells = line.split(/\t|,/).map((c) => c.trim());
-      const num = (s: string | undefined) => {
-        const n = s ? parseInt(s, 10) : NaN;
-        return Number.isFinite(n) ? n : null;
-      };
+      // split on TAB only when present (preserves names with internal commas);
+      // otherwise fall back to comma.
+      const cells = (line.includes("\t") ? line.split("\t") : line.split(",")).map(
+        (c) => c.trim()
+      );
+      const fullName = cells[1] ?? "";
+      const [name1, name2, name3, name4] = splitName(fullName);
+      const dob = parseDateString(cells[3] ?? "");
       return {
-        name1: cells[0] ?? "",
-        name2: cells[1] ?? "",
-        name3: cells[2] ?? "",
-        name4: cells[3] ?? "",
-        phone: (cells[4] ?? "").replace(/\D/g, "").slice(0, 11),
-        birth_day: num(cells[5]),
-        birth_month: num(cells[6]),
-        birth_year: num(cells[7]),
-        address: cells[8] ?? "",
-        notes: cells[9] ?? "",
-        opening_balance: cells[10] ? parseFloat(cells[10]) || 0 : 0,
+        code: cells[0] ?? "",
+        fullName,
+        name1,
+        name2,
+        name3,
+        name4,
+        phone: (cells[2] ?? "").replace(/\D/g, "").slice(0, 11),
+        birth_day: dob.day,
+        birth_month: dob.month,
+        birth_year: dob.year,
+        address: cells[4] ?? "",
+        notes: cells[5] ?? "",
+        photo_url: cells[6] ?? "",
+        opening_balance: cells[7] ? parseFloat(cells[7]) || 0 : 0,
       };
     });
 }
@@ -66,6 +83,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
 
   const rows = useMemo(() => parsePaste(raw), [raw]);
   const invalidPhones = rows.filter((r) => r.phone && !isValidPhone(r.phone)).length;
+  const readyCount = rows.filter((r) => r.fullName.trim()).length;
 
   const input =
     "w-full rounded-2xl border border-primary-soft bg-surface-muted px-4 py-2.5 text-ink outline-none focus:border-primary";
@@ -73,7 +91,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
   const handleSave = async () => {
     setError(null);
     setResult(null);
-    const valid = rows.filter((r) => r.name1);
+    const valid = rows.filter((r) => r.fullName.trim());
     if (valid.length === 0) {
       setError("لا توجد صفوف صالحة. الصق البيانات أولاً.");
       return;
@@ -84,10 +102,12 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
     }
     setSaving(true);
     const supabase = createClient();
-    // unique codes: base ms + index to avoid collisions in same millisecond
+    // unique codes: use provided code, else generate base ms + index to avoid
+    // collisions within the same millisecond.
+    const prefix = (branding.codeWord || "StMary").replace(/\s+/g, "");
     const base = Date.now();
     const payload = valid.map((r, i) => ({
-      code: `${(branding.codeWord || "StMary").replace(/\s+/g, "")}${base + i}`,
+      code: r.code.trim() || `${prefix}${base + i}`,
       name1: r.name1,
       name2: r.name2,
       name3: r.name3,
@@ -98,6 +118,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
       birth_year: r.birth_year,
       address: r.address || null,
       notes: r.notes || null,
+      photo_url: r.photo_url.trim() || null,
       opening_balance: r.opening_balance,
       gender,
       class_id: classId || null,
@@ -122,22 +143,28 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
         </div>
         <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">
           كل سطر = مخدوم. الأعمدة بالترتيب (مفصولة بـ Tab أو فاصلة):<br />
-          <span dir="ltr" className="font-mono">
-            الاسم1 | الاسم2 | الاسم3 | الاسم4 | تليفون | يوم | شهر | سنة | العنوان | ملاحظات | الرصيد
+          <span className="font-semibold text-ink">
+            الكود | الاسم رباعي | رقم التليفون | تاريخ الميلاد | العنوان | ملاحظات | صورة | الرصيد
           </span>
+          <br />
+          الكود اختياري (يُولَّد تلقائياً لو فاضي) • تاريخ الميلاد مثل
+          {" "}
+          <span dir="ltr" className="font-mono">2022-04-02</span>
         </p>
         <textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
           dir="ltr"
-          placeholder={"مينا\tعادل\tسمير\tفهمي\t01012345678\t12\t5\t2010\tطنطا\t-\t0"}
+          placeholder={
+            "StMary1759503656922\tكيفين بيشوى اسعد\t01273447740\t2022-04-02\tالمنشيه\t\t\t105"
+          }
           className={input + " resize-none font-mono text-xs"}
         />
         {rows.length > 0 && (
           <div className="mt-2 flex items-center justify-between text-xs">
             <span className="font-semibold text-primary">
-              {rows.filter((r) => r.name1).length} صف جاهز
+              {readyCount} صف جاهز
               {invalidPhones > 0 && ` • ${invalidPhones} تليفون خطأ`}
             </span>
             <button
@@ -197,7 +224,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
         className="flex w-full items-center justify-center gap-2 rounded-2xl btn-gradient py-3.5 text-sm font-bold text-white shadow-soft active:scale-95 disabled:opacity-70"
       >
         {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-        {saving ? "جارٍ الحفظ..." : `إضافة ${rows.filter((r) => r.name1).length || ""} مخدوم`}
+        {saving ? "جارٍ الحفظ..." : `إضافة ${readyCount || ""} مخدوم`}
       </button>
     </div>
   );
