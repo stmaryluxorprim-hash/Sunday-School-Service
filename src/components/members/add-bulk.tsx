@@ -19,6 +19,8 @@ import {
   phoneForStorage,
   parseDateCell,
   Gender,
+  DateOrder,
+  dateOrderLabel,
 } from "@/lib/data/types";
 
 type ClassOpt = { id: string; name: string };
@@ -31,6 +33,7 @@ type DraftRow = {
   name: string;
   phone: string; // raw, normalized on save
   birth_date: string; // raw (YYYY-MM-DD or D/M/YYYY)
+  dateOrder: DateOrder; // how to read the two non-year parts (per row)
   address: string;
   notes: string;
   photo_url: string;
@@ -44,7 +47,12 @@ let _seq = 0;
 const newUid = () => `r${Date.now()}_${_seq++}`;
 
 /** Parse pasted text into draft rows (columns by Tab, fallback comma). */
-function parsePaste(text: string, gender: Gender, classId: string): DraftRow[] {
+function parsePaste(
+  text: string,
+  gender: Gender,
+  classId: string,
+  dateOrder: DateOrder
+): DraftRow[] {
   return text
     .split(/\r?\n/)
     .filter((l) => l.trim().length > 0)
@@ -58,6 +66,7 @@ function parsePaste(text: string, gender: Gender, classId: string): DraftRow[] {
         name: orEmpty(cells[1]),
         phone: orEmpty(cells[2]),
         birth_date: orEmpty(cells[3]),
+        dateOrder,
         address: orEmpty(cells[4]),
         notes: orEmpty(cells[5]),
         photo_url: orEmpty(cells[6]),
@@ -76,6 +85,8 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
   // "apply to all" defaults
   const [allGender, setAllGender] = useState<Gender>("male");
   const [allClass, setAllClass] = useState("");
+  // default date order: month-before-day (mdy) as requested
+  const [allDateOrder, setAllDateOrder] = useState<DateOrder>("mdy");
 
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -88,7 +99,14 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
   const phoneBad = (r: DraftRow) =>
     r.phone.trim().length > 0 && !isValidPhone(normalizePhone(r.phone));
 
+  // date validity per row: has text but doesn't parse to a valid ISO date
+  // (parsed with that row's own chosen order)
+  const dateBad = (r: DraftRow) =>
+    r.birth_date.trim().length > 0 &&
+    parseDateCell(r.birth_date, r.dateOrder) === null;
+
   const invalidPhones = useMemo(() => rows.filter(phoneBad).length, [rows]);
+  const invalidDates = useMemo(() => rows.filter(dateBad).length, [rows]);
   const missingName = useMemo(
     () => rows.filter((r) => !r.name.trim()).length,
     [rows]
@@ -97,7 +115,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
   const loadPaste = () => {
     setError(null);
     setResult(null);
-    const parsed = parsePaste(raw, allGender, allClass);
+    const parsed = parsePaste(raw, allGender, allClass, allDateOrder);
     if (parsed.length === 0) {
       setError("لا يوجد بيانات للّصق.");
       return;
@@ -126,6 +144,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
         notes: "",
         photo_url: "",
         balance: "",
+        dateOrder: allDateOrder,
         gender: allGender,
         classId: allClass,
       },
@@ -135,6 +154,8 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
     setRows((prev) => prev.map((r) => ({ ...r, gender: allGender })));
   const applyClassAll = () =>
     setRows((prev) => prev.map((r) => ({ ...r, classId: allClass })));
+  const applyDateOrderAll = () =>
+    setRows((prev) => prev.map((r) => ({ ...r, dateOrder: allDateOrder })));
 
   const handleSave = async () => {
     setError(null);
@@ -146,6 +167,12 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
     }
     if (invalidPhones > 0) {
       setError(`يوجد ${invalidPhones} رقم تليفون غير صحيح (مظلّل بالأحمر). صحّحه أو امسحه.`);
+      return;
+    }
+    if (invalidDates > 0) {
+      setError(
+        `يوجد ${invalidDates} تاريخ ميلاد غير صحيح (مظلّل بالأحمر). الصيغة المقبولة: سنة-شهر-يوم أو يوم/شهر/سنة. صحّحه أو امسحه.`
+      );
       return;
     }
     setSaving(true);
@@ -162,7 +189,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
         code: pastedCode ? `${pastedCode}` : `${prefix}${base}${i}`,
         name: r.name.trim(),
         phone: r.phone.trim() ? phoneForStorage(r.phone) : null,
-        birth_date: parseDateCell(r.birth_date),
+        birth_date: parseDateCell(r.birth_date, r.dateOrder),
         address: r.address.trim() || null,
         notes: r.notes.trim() || null,
         photo_url: r.photo_url.trim() || null,
@@ -224,7 +251,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
           onChange={(e) => setRaw(e.target.value)}
           rows={4}
           dir="ltr"
-          placeholder={"StMary1759503656922\tكيفين بيشوى اسعد\t01273447740\t2022-04-02\tالمنشيه\t\t\t105"}
+          placeholder={"StMary1759503656922\tكيفين بيشوى اسعد\t01273447740\t2022-12-04\tالمنشيه\t\t\t105"}
           className={input + " resize-none font-mono text-xs"}
         />
         <div className="mt-2 flex gap-2">
@@ -295,6 +322,38 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
             <CheckCheck className="h-4 w-4" /> تطبيق على الكل
           </button>
         </div>
+        {/* date order */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="mb-1 block text-xs font-semibold text-ink-muted">
+              ترتيب التاريخ
+            </label>
+            <div className="flex gap-2">
+              {(["mdy", "dmy"] as DateOrder[]).map((o) => (
+                <button
+                  key={o}
+                  onClick={() => setAllDateOrder(o)}
+                  className={`flex-1 rounded-2xl py-2 text-xs font-semibold transition active:scale-95 ${
+                    allDateOrder === o ? "btn-gradient text-white" : "bg-surface-muted text-ink-muted"
+                  }`}
+                >
+                  {o === "mdy" ? "شهر ثم يوم" : "يوم ثم شهر"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={applyDateOrderAll}
+            disabled={rows.length === 0}
+            className="flex items-center gap-1 rounded-2xl bg-primary-soft px-3 py-2 text-xs font-bold text-primary active:scale-95 disabled:opacity-50"
+          >
+            <CheckCheck className="h-4 w-4" /> تطبيق على الكل
+          </button>
+        </div>
+        <p className="text-[10px] leading-relaxed text-ink-muted">
+          الافتراضي: <span className="font-semibold text-ink">شهر ثم يوم</span> (مثل
+          2023-12-21). لو بياناتك يوم ثم شهر بدّل الزر واضغط «تطبيق على الكل».
+        </p>
       </div>
 
       {/* status messages */}
@@ -322,6 +381,9 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
               {invalidPhones > 0 && (
                 <span className="text-accent"> • {invalidPhones} تليفون خطأ</span>
               )}
+              {invalidDates > 0 && (
+                <span className="text-accent"> • {invalidDates} تاريخ خطأ</span>
+              )}
             </p>
             <button
               onClick={() => setRows([])}
@@ -338,6 +400,7 @@ export function AddBulk({ classes }: { classes: ClassOpt[] }) {
               index={idx + 1}
               classes={classes}
               phoneBad={phoneBad(r)}
+              dateBad={dateBad(r)}
               onChange={(patch) => update(r.uid, patch)}
               onRemove={() => removeRow(r.uid)}
             />
@@ -365,6 +428,7 @@ function RowCard({
   index,
   classes,
   phoneBad,
+  dateBad,
   onChange,
   onRemove,
 }: {
@@ -372,6 +436,7 @@ function RowCard({
   index: number;
   classes: ClassOpt[];
   phoneBad: boolean;
+  dateBad: boolean;
   onChange: (patch: Partial<DraftRow>) => void;
   onRemove: () => void;
 }) {
@@ -424,9 +489,29 @@ function RowCard({
             value={row.birth_date}
             onChange={(e) => onChange({ birth_date: e.target.value })}
             dir="ltr"
-            placeholder="2022-04-02"
-            className={`${field} ${ok}`}
+            placeholder="2022-12-04 أو 04/12/2022"
+            className={`${field} ${dateBad ? bad : ok}`}
           />
+        </div>
+
+        {/* per-row date order */}
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold text-ink-muted">
+            ترتيب التاريخ
+          </label>
+          <div className="flex gap-1">
+            {(["mdy", "dmy"] as DateOrder[]).map((o) => (
+              <button
+                key={o}
+                onClick={() => onChange({ dateOrder: o })}
+                className={`flex-1 rounded-xl py-1.5 text-[11px] font-semibold transition active:scale-95 ${
+                  row.dateOrder === o ? "btn-gradient text-white" : "bg-surface-muted text-ink-muted"
+                }`}
+              >
+                {o === "mdy" ? "شهر/يوم" : "يوم/شهر"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -494,6 +579,12 @@ function RowCard({
       {phoneBad && (
         <p className="mt-1 text-[10px] font-semibold text-accent">
           التليفون لازم 11 رقم يبدأ بـ 0 (أو 10 بدون الصفر)
+        </p>
+      )}
+      {dateBad && (
+        <p className="mt-1 text-[10px] font-semibold text-accent">
+          تاريخ غير صحيح للترتيب المختار ({dateOrderLabel(row.dateOrder)}) — جرّب
+          تبديل ترتيب التاريخ للصف
         </p>
       )}
     </div>

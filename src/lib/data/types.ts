@@ -156,15 +156,64 @@ export function isoToParts(iso: string | null): {
 }
 
 /**
- * Parse a pasted date cell into ISO `YYYY-MM-DD` (or null).
- * Accepts `YYYY-MM-DD` and `D/M/YYYY` / `D-M-YYYY` / `D.M.YYYY`.
+ * Validate a (day, month, year) triple and build ISO — returns null if the
+ * day/month are out of range, so we never send a bad date to the DB.
  */
-export function parseDateCell(s: string): string | null {
+function safeISO(
+  day: number,
+  month: number,
+  year: number
+): string | null {
+  if (!day || !month || !year) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  if (year < 1900 || year > 2200) return null;
+  return partsToISO(day, month, year);
+}
+
+/**
+ * The order of the two non-year parts in a pasted date.
+ *   - "mdy" → month before day  (e.g. 2023-12-21 = 21 Dec 2023)  ← default
+ *   - "dmy" → day before month  (e.g. 2023-21-12 = 21 Dec 2023)
+ */
+export type DateOrder = "mdy" | "dmy";
+
+/** Human label for a date order (Arabic). */
+export function dateOrderLabel(o: DateOrder): string {
+  return o === "mdy" ? "شهر/يوم" : "يوم/شهر";
+}
+
+/**
+ * Parse a pasted date cell into ISO `YYYY-MM-DD` (or null), using an EXPLICIT
+ * order for the two non-year parts (chosen by the user — no guessing).
+ *
+ * Accepts these shapes (separator = - / . or space):
+ *   - year-first:  YYYY <A> <B>   → A,B interpreted per `order`
+ *   - year-last:   <A> <B> YYYY   → A,B interpreted per `order`
+ *
+ * With order="mdy": A=month, B=day.  With order="dmy": A=day, B=month.
+ * Invalid combinations (month>12, day>31, …) return null so a bad value is
+ * flagged in the UI instead of being sent to the DB.
+ */
+export function parseDateCell(
+  s: string,
+  order: DateOrder = "mdy"
+): string | null {
   const t = (s || "").trim();
   if (!t) return null;
-  const iso = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) return partsToISO(+iso[3], +iso[2], +iso[1]);
-  const dmy = t.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-  if (dmy) return partsToISO(+dmy[1], +dmy[2], +dmy[3]);
+
+  const build = (a: number, b: number, year: number): string | null =>
+    order === "mdy"
+      ? safeISO(b, a, year) // a=month, b=day
+      : safeISO(a, b, year); // a=day,   b=month
+
+  // year-first: YYYY <sep> A <sep> B
+  const yFirst = t.match(/^(\d{4})[/\-.\s](\d{1,2})[/\-.\s](\d{1,2})$/);
+  if (yFirst) return build(+yFirst[2], +yFirst[3], +yFirst[1]);
+
+  // year-last: A <sep> B <sep> YYYY
+  const yLast = t.match(/^(\d{1,2})[/\-.\s](\d{1,2})[/\-.\s](\d{4})$/);
+  if (yLast) return build(+yLast[1], +yLast[2], +yLast[3]);
+
   return null;
 }
