@@ -39,7 +39,15 @@ body {
 }
 
 body {
-  background: rgb(var(--color-surface-muted));
+  /* Background tinted by the theme gradient colors (soft, elegant) */
+  background-color: rgb(var(--color-surface-muted));
+  background-image: linear-gradient(
+    160deg,
+    rgb(var(--color-primary) / 0.1),
+    rgb(var(--color-accent) / 0.08) 55%,
+    rgb(var(--color-secondary) / 0.06)
+  );
+  background-attachment: fixed;
   color: rgb(var(--color-ink));
   font-family: var(--font-arabic), "Tajawal", system-ui, sans-serif;
   overscroll-behavior-y: none;
