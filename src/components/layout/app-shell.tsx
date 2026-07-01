@@ -5,6 +5,7 @@ import { Header } from "./header";
 import { Drawer } from "./drawer";
 import { DateSheet } from "./date-sheet";
 import { BottomNav } from "./bottom-nav";
+import { MessagingApp } from "@/components/messaging/messaging-app";
 import {
   SelectedDateProvider,
   useSelectedDate,
@@ -22,7 +23,7 @@ function formatArabicDate(iso: string): string {
   }
 }
 
-export type UserProfile = { name: string; email: string } | null;
+export type UserProfile = { id?: string; name: string; email: string } | null;
 
 function Shell({
   children,
@@ -34,27 +35,48 @@ function Shell({
   const { date, setDate } = useSelectedDate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
 
   const arabicDate = useMemo(() => formatArabicDate(date), [date]);
 
   return (
     <div className="bg-aurora min-h-screen">
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col">
-        <Header
-          onMenuClick={() => setMenuOpen(true)}
-          onDateClick={() => setDateOpen(true)}
-          selectedDate={arabicDate}
-        />
+        {/* الهيدر ثابت أعلى الشاشة ولا يتحرّك مع المحتوى */}
+        <div className="fixed inset-x-0 top-0 z-30 mx-auto max-w-md">
+          <Header
+            onMenuClick={() => setMenuOpen(true)}
+            onDateClick={() => setDateOpen(true)}
+            onMessagesClick={() => setMessagesOpen(true)}
+            selectedDate={arabicDate}
+          />
+        </div>
 
-        <main className="flex-1 px-4 pb-28 pt-4">{children}</main>
+        {/* حشوة علوية بمقدار ارتفاع الهيدر حتى لا يختفي المحتوى تحته */}
+        <main className="flex-1 px-4 pb-28 pt-[calc(env(safe-area-inset-top)+5.25rem)]">
+          {children}
+        </main>
 
         <BottomNav />
-        <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} profile={profile} />
+        <Drawer
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          profile={profile}
+          onOpenMessages={() => {
+            setMenuOpen(false);
+            setMessagesOpen(true);
+          }}
+        />
         <DateSheet
           open={dateOpen}
           onClose={() => setDateOpen(false)}
           value={date}
           onChange={setDate}
+        />
+        <MessagingApp
+          open={messagesOpen}
+          onClose={() => setMessagesOpen(false)}
+          profile={profile}
         />
       </div>
     </div>

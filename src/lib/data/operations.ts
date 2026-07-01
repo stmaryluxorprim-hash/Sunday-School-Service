@@ -97,3 +97,18 @@ export async function adjustBalance(
 export function isPointsAction(a: ActionKey): boolean {
   return a === "add_points" || a === "deduct_points";
 }
+
+/** البحث عن مخدوم بالكود (المستخدم في الماسح). */
+export async function findMemberByCode(
+  code: string
+): Promise<MemberRow | null> {
+  const clean = (code || "").trim();
+  if (!clean) return null;
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("members")
+    .select("*")
+    .eq("code", clean)
+    .maybeSingle();
+  return (data as MemberRow) ?? null;
+}

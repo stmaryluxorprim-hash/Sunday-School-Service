@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   CalendarX,
   Coins,
+  MessageCircle,
 } from "lucide-react";
 import { PageHero } from "@/components/ui/page-card";
 import { createClient } from "@/lib/supabase/client";
@@ -29,12 +30,11 @@ import {
   ControlsState,
   DEFAULT_CONTROLS,
 } from "@/components/members/data-controls";
-import { PointsDialog } from "@/components/members/points-dialog";
+import { ContactSheet } from "@/components/members/contact-sheet";
 import {
   markAttendance,
   unmarkAttendance,
   adjustBalance,
-  isPointsAction,
   OpResult,
 } from "@/lib/data/operations";
 import { useSelectedDate } from "@/context/selected-date-context";
@@ -94,8 +94,8 @@ export default function DataPage() {
   // حالة العملية الجارية + رسالة (toast)
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
-  // dialog النقاط
-  const [pointsFor, setPointsFor] = useState<MemberRow | null>(null);
+  // ورقة التواصل (اتصال/SMS/واتساب/رسالة داخلية)
+  const [contactFor, setContactFor] = useState<MemberRow | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -241,23 +241,34 @@ export default function DataPage() {
     }
   };
 
-  // تنفيذ الوظيفة على مخدوم محدد
+  // تنفيذ الوظيفة على مخدوم محدد — بدون نوافذ منبثقة للنقاط
   const runAction = useCallback(
     async (m: MemberRow, action: ActionKey) => {
       if (busyId) return;
-      // وظائف النقاط تفتح dialog لإدخال القيمة والسبب
-      if (isPointsAction(action)) {
-        setPointsFor(m);
+
+      // وظيفة التواصل تفتح ورقة الخيارات (اتصال/SMS/واتساب/رسالة داخلية)
+      if (action === "contact") {
+        setContactFor(m);
         return;
       }
+
       setBusyId(m.id);
       try {
-        const res =
-          action === "attendance"
-            ? await markAttendance(m.id, date, controls.points)
-            : await unmarkAttendance(m.id, date, controls.points);
+        let res: OpResult;
+        if (action === "attendance") {
+          res = await markAttendance(m.id, date, controls.points);
+        } else if (action === "unattendance") {
+          res = await unmarkAttendance(m.id, date, controls.points);
+        } else {
+          // إضافة/خصم نقاط مباشرة — القيمة من عدّاد النقاط، والسبب من نوع الوظيفة
+          const amount =
+            action === "add_points" ? controls.points : -controls.points;
+          const reason = action === "add_points" ? "إضافة نقاط" : "خصم نقاط";
+          res = await adjustBalance(m.id, amount, reason, date);
+        }
         applyResult(res);
-        if (res.ok) loadAttendance();
+        if (res.ok && (action === "attendance" || action === "unattendance"))
+          loadAttendance();
       } finally {
         setBusyId(null);
       }
@@ -265,17 +276,13 @@ export default function DataPage() {
     [busyId, date, loadAttendance, controls.points]
   );
 
-  // تأكيد dialog النقاط
-  const confirmPoints = async (amount: number, reason: string) => {
-    if (!pointsFor) return;
-    setBusyId(pointsFor.id);
-    try {
-      const res = await adjustBalance(pointsFor.id, amount, reason, date);
-      applyResult(res);
-      if (res.ok) setPointsFor(null);
-    } finally {
-      setBusyId(null);
-    }
+  // فتح محادثة داخلية مع مخدوم عبر تطبيق الرسائل في الهيدر
+  const openInternalMessage = (m: MemberRow) => {
+    window.dispatchEvent(
+      new CustomEvent("open-internal-message", {
+        detail: { memberId: m.id, memberName: m.name },
+      })
+    );
   };
 
   return (
@@ -404,15 +411,11 @@ export default function DataPage() {
         </div>
       )}
 
-      {/* dialog النقاط */}
-      <PointsDialog
-        open={!!pointsFor}
-        mode={controls.action === "deduct_points" ? "deduct" : "add"}
-        memberName={pointsFor?.name || ""}
-        defaultAmount={controls.points}
-        busy={!!busyId}
-        onClose={() => setPointsFor(null)}
-        onConfirm={confirmPoints}
+      {/* ورقة التواصل */}
+      <ContactSheet
+        member={contactFor}
+        onClose={() => setContactFor(null)}
+        onInternalMessage={openInternalMessage}
       />
 
       {/* toast */}
@@ -442,6 +445,8 @@ function actionMeta(action: ActionKey) {
       return { Icon: Coins, label: "+ نقاط" };
     case "deduct_points":
       return { Icon: Coins, label: "- نقاط" };
+    case "contact":
+      return { Icon: MessageCircle, label: "تواصل" };
   }
 }
 

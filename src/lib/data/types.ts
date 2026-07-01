@@ -108,7 +108,8 @@ export type ActionKey =
   | "attendance" // تسجيل حضور
   | "unattendance" // إلغاء حضور اليوم
   | "add_points" // إضافة نقاط
-  | "deduct_points"; // خصم نقاط
+  | "deduct_points" // خصم نقاط
+  | "contact"; // تواصل (اتصال/رسالة/واتساب/رسالة داخلية)
 
 /** الوظائف المتاحة الآن — تُضاف وظائف أخرى لاحقاً. */
 export const ACTION_OPTIONS: { value: ActionKey; label: string }[] = [
@@ -116,6 +117,7 @@ export const ACTION_OPTIONS: { value: ActionKey; label: string }[] = [
   { value: "unattendance", label: "إلغاء حضور اليوم" },
   { value: "add_points", label: "إضافة نقاط" },
   { value: "deduct_points", label: "خصم نقاط" },
+  { value: "contact", label: "تواصل" },
 ];
 
 /** Generate a member code: codeWord + current epoch milliseconds. */
