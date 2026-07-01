@@ -1,19 +1,25 @@
 "use client";
 
-import { Menu, CalendarDays, Church } from "lucide-react";
+import { Menu, CalendarDays, Church, MessageCircle } from "lucide-react";
 import { useSettings } from "@/context/settings-context";
 
 type HeaderProps = {
   onMenuClick: () => void;
   onDateClick: () => void;
+  onMessagesClick: () => void;
   selectedDate: string; // already formatted in Arabic
 };
 
-export function Header({ onMenuClick, onDateClick, selectedDate }: HeaderProps) {
+export function Header({
+  onMenuClick,
+  onDateClick,
+  onMessagesClick,
+  selectedDate,
+}: HeaderProps) {
   const { branding } = useSettings();
 
   return (
-    <header className="sticky top-0 z-30">
+    <header className="w-full">
       <div className="glass border-b border-white/20 px-4 pt-[calc(env(safe-area-inset-top)+0.6rem)] pb-3">
         <div className="flex items-center justify-between gap-3">
           {/* Right side (RTL start): icon + name + slogan */}
@@ -38,8 +44,15 @@ export function Header({ onMenuClick, onDateClick, selectedDate }: HeaderProps) 
             </div>
           </div>
 
-          {/* Left side (RTL end): date + menu */}
+          {/* Left side (RTL end): messages + date + menu */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={onMessagesClick}
+              className="grid h-10 w-10 place-items-center rounded-2xl bg-surface text-primary shadow-card active:scale-95 transition"
+              aria-label="الرسائل"
+            >
+              <MessageCircle className="h-5 w-5" />
+            </button>
             <button
               onClick={onDateClick}
               className="flex items-center gap-1.5 rounded-2xl bg-primary-soft/70 px-3 py-2 text-xs font-semibold text-primary active:scale-95 transition"

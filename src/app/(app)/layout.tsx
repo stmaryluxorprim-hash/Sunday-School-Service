@@ -16,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const profile = user
     ? {
+        id: user.id,
         name:
           (user.user_metadata?.full_name as string | undefined) ??
           user.email?.split("@")[0] ??
