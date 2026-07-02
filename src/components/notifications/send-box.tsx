@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Send, BellRing, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Send, BellRing, Loader2, BellOff } from "lucide-react";
 import { Card } from "@/components/ui/page-card";
 import { sendNotification } from "@/lib/notifications/operations";
 import {
@@ -16,9 +16,12 @@ export function SendNotificationBox() {
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [enabling, setEnabling] = useState(false);
-  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
-    typeof window !== "undefined" ? notificationPermission() : "default"
-  );
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">("default");
+
+  // الإذن يُطلب تلقائياً من AppShell؛ هنا نراقب حالته فقط لعرض تنبيه عند الرفض.
+  useEffect(() => {
+    setPerm(notificationPermission());
+  }, []);
 
   async function handleSend() {
     const body = text.trim();
@@ -43,12 +46,13 @@ export function SendNotificationBox() {
     if (!ok) {
       setStatus({
         ok: false,
-        msg: "تعذّر تفعيل إشعارات الجهاز (تحقق من الأذونات).",
+        msg: "تعذّر تفعيل إشعارات الجهاز (فعّلها من إعدادات المتصفح).",
       });
     }
   }
 
-  const showEnable =
+  // نعرض التنبيه فقط إذا رفض المستخدم الإذن سابقاً (المتصفح يمنع إعادة الطلب تلقائياً).
+  const showDeniedHint =
     isPushSupported() && perm !== "granted" && perm !== "unsupported";
 
   return (
@@ -83,18 +87,18 @@ export function SendNotificationBox() {
         {sending ? "جارٍ الإرسال…" : "إرسال للجميع"}
       </button>
 
-      {showEnable && (
+      {showDeniedHint && (
         <button
           onClick={handleEnable}
           disabled={enabling}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-soft/70 px-4 py-2.5 text-xs font-semibold text-primary transition active:scale-95 disabled:opacity-50"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-700 transition active:scale-95 disabled:opacity-50"
         >
           {enabling ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <BellRing className="h-4 w-4" />
+            <BellOff className="h-4 w-4" />
           )}
-          تفعيل إشعارات الجهاز على هذا الجهاز
+          إشعارات الجهاز غير مفعّلة — اضغط للتفعيل
         </button>
       )}
 

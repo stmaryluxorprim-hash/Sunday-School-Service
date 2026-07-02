@@ -63,6 +63,73 @@ export async function enablePushNotifications(): Promise<boolean> {
   return saveSubscription(subscription);
 }
 
+/**
+ * طلب إذن الإشعارات تلقائياً عند فتح التطبيق (بدون زر).
+ *  - لا يفعل شيئاً إذا سبق رفض الإذن (نحترم قرار المستخدم ولا نزعجه).
+ *  - إذا كان الإذن ممنوحاً بالفعل: يتأكد فقط من وجود اشتراك محفوظ.
+ *  - إذا كان الإذن "default": يطلبه مرة واحدة فقط لكل جهاز (عبر localStorage).
+ * يعيد true عندما يكون الجهاز مشتركاً بنجاح.
+ */
+export async function autoEnablePush(): Promise<boolean> {
+  if (!isPushSupported() || !VAPID_PUBLIC_KEY) return false;
+
+  const perm = Notification.permission;
+
+  // المستخدم رفض سابقاً — لا نعيد الطلب (المتصفح يمنعه على أي حال).
+  if (perm === "denied") return false;
+
+  // ممنوح بالفعل — تأكد فقط من حفظ الاشتراك.
+  if (perm === "granted") return enablePushNotifications();
+
+  // perm === "default": اطلب الإذن تلقائياً مرة واحدة فقط لكل جهاز.
+  try {
+    if (
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("push_auto_asked") === "1"
+    ) {
+      return false;
+    }
+    localStorage.setItem("push_auto_asked", "1");
+  } catch {
+    /* localStorage غير متاح — تابع الطلب على أي حال */
+  }
+
+  return enablePushNotifications();
+}
+
+// ---------------------------------------------------------------------
+// App icon badge (فقاعة على أيقونة التطبيق مثل واتساب) — Badging API
+// ---------------------------------------------------------------------
+
+type BadgeNavigator = Navigator & {
+  setAppBadge?: (count?: number) => Promise<void>;
+  clearAppBadge?: () => Promise<void>;
+};
+
+/** هل تدعم المنصّة فقاعة الأيقونة (Badging API)؟ */
+export function isBadgingSupported(): boolean {
+  return (
+    typeof navigator !== "undefined" && "setAppBadge" in (navigator as BadgeNavigator)
+  );
+}
+
+/**
+ * تحديث فقاعة أيقونة التطبيق برقم غير المقروء (مثل واتساب).
+ * count = 0 يمسح الفقاعة. تظهر على التطبيق المثبّت (PWA) على المنصّات الداعمة.
+ */
+export async function updateAppBadge(count: number): Promise<void> {
+  const nav = navigator as BadgeNavigator;
+  try {
+    if (count > 0) {
+      await nav.setAppBadge?.(count);
+    } else {
+      await nav.clearAppBadge?.();
+    }
+  } catch {
+    /* تجاهل — غير مدعوم أو رُفض */
+  }
+}
+
 /** حفظ اشتراك الجهاز في جدول push_subscriptions. */
 async function saveSubscription(subscription: PushSubscription): Promise<boolean> {
   const supabase = createClient();
