@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useMemo, ReactNode } from "react";
+import { useState, useMemo, useEffect, useCallback, ReactNode } from "react";
 import { Header } from "./header";
 import { Drawer } from "./drawer";
 import { DateSheet } from "./date-sheet";
 import { BottomNav } from "./bottom-nav";
 import { MessagingApp } from "@/components/messaging/messaging-app";
+import { NotificationsPanel } from "@/components/notifications/notifications-panel";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { listNotifications } from "@/lib/notifications/operations";
+import { registerServiceWorker } from "@/lib/notifications/push";
 import {
   SelectedDateProvider,
   useSelectedDate,
@@ -36,8 +40,44 @@ function Shell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const arabicDate = useMemo(() => formatArabicDate(date), [date]);
+
+  // تسجيل الـ Service Worker مرة واحدة (لإشعارات الجهاز).
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
+  // حساب عدد الإشعارات غير المقروءة + متابعتها فورياً.
+  const refreshUnread = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const data = await listNotifications();
+    setUnreadCount(data.filter((n) => !n.read).length);
+  }, []);
+
+  useEffect(() => {
+    refreshUnread();
+    if (!isSupabaseConfigured) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("shell_notifications")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        () => refreshUnread()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notification_reads" },
+        () => refreshUnread()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshUnread]);
 
   return (
     <div className="bg-aurora min-h-screen">
@@ -48,6 +88,8 @@ function Shell({
             onMenuClick={() => setMenuOpen(true)}
             onDateClick={() => setDateOpen(true)}
             onMessagesClick={() => setMessagesOpen(true)}
+            onNotificationsClick={() => setNotificationsOpen(true)}
+            unreadCount={unreadCount}
             selectedDate={arabicDate}
           />
         </div>
@@ -77,6 +119,13 @@ function Shell({
           open={messagesOpen}
           onClose={() => setMessagesOpen(false)}
           profile={profile}
+        />
+        <NotificationsPanel
+          open={notificationsOpen}
+          onClose={() => {
+            setNotificationsOpen(false);
+            refreshUnread();
+          }}
         />
       </div>
     </div>

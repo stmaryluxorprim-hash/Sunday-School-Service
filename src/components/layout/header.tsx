@@ -1,12 +1,14 @@
 "use client";
 
-import { Menu, CalendarDays, Church, MessageCircle } from "lucide-react";
+import { Menu, CalendarDays, Church, MessageCircle, Bell } from "lucide-react";
 import { useSettings } from "@/context/settings-context";
 
 type HeaderProps = {
   onMenuClick: () => void;
   onDateClick: () => void;
   onMessagesClick: () => void;
+  onNotificationsClick: () => void;
+  unreadCount?: number;
   selectedDate: string; // already formatted in Arabic
 };
 
@@ -14,6 +16,8 @@ export function Header({
   onMenuClick,
   onDateClick,
   onMessagesClick,
+  onNotificationsClick,
+  unreadCount = 0,
   selectedDate,
 }: HeaderProps) {
   const { branding } = useSettings();
@@ -44,8 +48,20 @@ export function Header({
             </div>
           </div>
 
-          {/* Left side (RTL end): messages + date + menu */}
+          {/* Left side (RTL end): notifications + messages + date + menu */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={onNotificationsClick}
+              className="relative grid h-10 w-10 place-items-center rounded-2xl bg-surface text-primary shadow-card active:scale-95 transition"
+              aria-label="الإشعارات"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -left-1 grid min-w-[1.15rem] h-[1.15rem] place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={onMessagesClick}
               className="grid h-10 w-10 place-items-center rounded-2xl bg-surface text-primary shadow-card active:scale-95 transition"
