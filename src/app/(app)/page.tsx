@@ -6,6 +6,7 @@ import { Home, Users, CalendarCheck, TrendingUp, Plus, ScanLine } from "lucide-r
 import { PageHero, Card } from "@/components/ui/page-card";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSelectedDate } from "@/context/selected-date-context";
+import { SendNotificationBox } from "@/components/notifications/send-box";
 
 export default function HomePage() {
   const { date } = useSelectedDate();
@@ -82,6 +83,8 @@ export default function HomePage() {
       </div>
 
       <div className="mt-4 space-y-3">
+        <SendNotificationBox />
+
         <Card>
           <h3 className="mb-1 font-bold text-ink">أهلاً بك 👋</h3>
           <p className="text-sm text-ink-muted">
