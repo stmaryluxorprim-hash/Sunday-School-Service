@@ -9,7 +9,11 @@ import { MessagingApp } from "@/components/messaging/messaging-app";
 import { NotificationsPanel } from "@/components/notifications/notifications-panel";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { listNotifications } from "@/lib/notifications/operations";
-import { registerServiceWorker } from "@/lib/notifications/push";
+import {
+  registerServiceWorker,
+  autoEnablePush,
+  updateAppBadge,
+} from "@/lib/notifications/push";
 import {
   SelectedDateProvider,
   useSelectedDate,
@@ -45,16 +49,23 @@ function Shell({
 
   const arabicDate = useMemo(() => formatArabicDate(date), [date]);
 
-  // تسجيل الـ Service Worker مرة واحدة (لإشعارات الجهاز).
+  // تسجيل الـ Service Worker + طلب إذن الإشعارات تلقائياً عند فتح التطبيق.
   useEffect(() => {
-    registerServiceWorker();
+    (async () => {
+      await registerServiceWorker();
+      // يطلب الإذن تلقائياً (مرة واحدة لكل جهاز) بدلاً من الضغط على زر.
+      await autoEnablePush();
+    })();
   }, []);
 
   // حساب عدد الإشعارات غير المقروءة + متابعتها فورياً.
   const refreshUnread = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     const data = await listNotifications();
-    setUnreadCount(data.filter((n) => !n.read).length);
+    const unread = data.filter((n) => !n.read).length;
+    setUnreadCount(unread);
+    // فقاعة أيقونة التطبيق (مثل واتساب) تعكس عدد غير المقروء.
+    updateAppBadge(unread);
   }, []);
 
   useEffect(() => {

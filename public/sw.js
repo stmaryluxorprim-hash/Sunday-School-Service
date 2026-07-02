@@ -29,7 +29,12 @@ self.addEventListener("push", (event) => {
     dir: "rtl",
     lang: "ar",
     tag: data.tag || undefined, // group / replace notifications with same tag
-    renotify: !!data.tag,
+    renotify: !!data.tag, // re-alert (banner + sound) even if one is showing
+    // --- Force a "heads-up" banner that pops from the top and auto-dismisses ---
+    requireInteraction: false, // auto-dismiss after a few seconds (banner style)
+    silent: false, // play sound → OS treats it as a high-importance alert
+    vibrate: [200, 100, 200], // buzz → nudges Android to show the top banner
+    timestamp: Date.now(),
     data: { url: data.url || "/" },
   };
 
