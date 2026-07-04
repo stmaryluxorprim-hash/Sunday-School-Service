@@ -36,10 +36,15 @@ type LogEntry = {
   at: string; // HH:MM:SS
 };
 
-const MODES: { key: ScanMode; label: string; Icon: typeof CalendarCheck }[] = [
-  { key: "attendance", label: "تسجيل حضور", Icon: CalendarCheck },
-  { key: "add_points", label: "إضافة نقاط", Icon: Plus },
-  { key: "deduct_points", label: "خصم نقاط", Icon: Minus },
+const MODES: {
+  key: ScanMode;
+  label: string;
+  Icon: typeof CalendarCheck;
+  grad: string;
+}[] = [
+  { key: "attendance", label: "تسجيل حضور", Icon: CalendarCheck, grad: "grad-green" },
+  { key: "add_points", label: "إضافة نقاط", Icon: Plus, grad: "grad-amber" },
+  { key: "deduct_points", label: "خصم نقاط", Icon: Minus, grad: "grad-accent" },
 ];
 
 export default function ScannerPage() {
@@ -207,10 +212,18 @@ export default function ScannerPage() {
 
   return (
     <div>
-      <PageHero title="الماسح" subtitle="مسح الكود لتسجيل الحضور والنقاط" icon={ScanLine} />
+      <PageHero
+        title="الماسح"
+        subtitle="مسح الكود لتسجيل الحضور والنقاط"
+        icon={ScanLine}
+        grad="grad-violet"
+      />
 
+      {/* على الكمبيوتر: الإعدادات + الكاميرا في عمود، والعدّاد + السجل في عمود آخر */}
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-3">
+      <div>
       {/* اختيار الوظيفة */}
-      <div className="animate-fade-up mb-3 rounded-3xl bg-surface p-3 shadow-card border border-white/40">
+      <div className="animate-fade-up card-topline mb-3 rounded-xl bg-surface p-3 pt-4 shadow-card border border-white/40">
         <p className="mb-2 text-xs font-bold text-ink-muted">وظيفة المسح</p>
         <div className="grid grid-cols-3 gap-2">
           {MODES.map((m) => {
@@ -220,10 +233,8 @@ export default function ScannerPage() {
               <button
                 key={m.key}
                 onClick={() => setMode(m.key)}
-                className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-3 text-xs font-bold transition active:scale-95 ${
-                  active
-                    ? "btn-gradient text-white shadow-soft"
-                    : "bg-surface-muted text-ink-muted"
+                className={`flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold transition active:scale-95 ${
+                  active ? `${m.grad} shadow-soft` : "bg-surface-muted text-ink-muted"
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -236,7 +247,7 @@ export default function ScannerPage() {
         {/* عدّاد النقاط */}
         <div className="mt-3 flex items-center gap-3">
           <div className="flex w-24 shrink-0 items-center gap-1.5 text-sm font-bold text-ink">
-            <Coins className="h-4 w-4 text-accent" />
+            <Coins className="h-4 w-4 text-amber-500" />
             <span>{mode === "attendance" ? "نقاط الحضور" : "عدد النقاط"}</span>
           </div>
           <div className="flex flex-1 items-center gap-2">
@@ -267,8 +278,8 @@ export default function ScannerPage() {
       </div>
 
       {/* الكاميرا */}
-      <div className="animate-fade-up mb-3 rounded-3xl bg-surface p-3 shadow-card border border-white/40">
-        <div className="relative mx-auto aspect-square w-full max-w-xs overflow-hidden rounded-3xl bg-ink/90">
+      <div className="animate-fade-up mb-3 rounded-xl bg-surface p-3 shadow-card border border-white/40">
+        <div className="relative mx-auto aspect-square w-full max-w-xs overflow-hidden rounded-xl bg-ink/90">
           <div id="qr-reader" className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
           {!scanning && (
             <div className="absolute inset-0 grid place-items-center">
@@ -294,8 +305,8 @@ export default function ScannerPage() {
 
         <button
           onClick={scanning ? stopCamera : startCamera}
-          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white shadow-soft active:scale-95 ${
-            scanning ? "bg-rose-500" : "btn-gradient"
+          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-lg py-3.5 text-sm font-bold text-white shadow-soft active:scale-95 ${
+            scanning ? "bg-rose-500" : "grad-violet"
           }`}
         >
           {scanning ? (
@@ -335,31 +346,33 @@ export default function ScannerPage() {
               }
             }}
             disabled={!manualCode.trim() || busy}
-            className="rounded-2xl btn-gradient px-4 py-2.5 text-sm font-bold text-white shadow-soft active:scale-95 disabled:opacity-50"
+            className="rounded-lg grad-violet px-4 py-2.5 text-sm font-bold text-white shadow-soft active:scale-95 disabled:opacity-50"
           >
             تنفيذ
           </button>
         </div>
       </div>
+      </div>
 
+      <div>
       {/* عدّاد الجلسة */}
       <div className="animate-fade-up mb-3 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl bg-surface p-3 text-center shadow-card border border-white/40">
+        <div className="rounded-lg border-t-2 border-primary bg-surface p-3 text-center shadow-card">
           <p className="text-xl font-bold text-gradient">{sessionStats.total}</p>
           <p className="text-[10px] text-ink-muted">إجمالي المسح</p>
         </div>
-        <div className="rounded-2xl bg-surface p-3 text-center shadow-card border border-white/40">
+        <div className="rounded-lg border-t-2 border-emerald-500 bg-surface p-3 text-center shadow-card">
           <p className="text-xl font-bold text-emerald-600">{sessionStats.ok}</p>
           <p className="text-[10px] text-ink-muted">ناجح</p>
         </div>
-        <div className="rounded-2xl bg-surface p-3 text-center shadow-card border border-white/40">
+        <div className="rounded-lg border-t-2 border-rose-500 bg-surface p-3 text-center shadow-card">
           <p className="text-xl font-bold text-rose-500">{sessionStats.fail}</p>
           <p className="text-[10px] text-ink-muted">فاشل</p>
         </div>
       </div>
 
       {/* سجل الجلسة */}
-      <div className="animate-fade-up rounded-3xl bg-surface p-3 shadow-card border border-white/40">
+      <div className="animate-fade-up rounded-xl bg-surface p-3 shadow-card border border-white/40">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-sm font-bold text-ink">
             <ListChecks className="h-4 w-4 text-primary" />
@@ -384,7 +397,7 @@ export default function ScannerPage() {
             {log.map((l) => (
               <div
                 key={l.id}
-                className="flex items-center gap-2.5 rounded-2xl bg-surface-muted p-2.5"
+                className="flex items-center gap-2.5 rounded-lg bg-surface-muted p-2.5"
               >
                 {l.ok ? (
                   <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
@@ -402,6 +415,8 @@ export default function ScannerPage() {
             ))}
           </div>
         )}
+      </div>
+      </div>
       </div>
     </div>
   );

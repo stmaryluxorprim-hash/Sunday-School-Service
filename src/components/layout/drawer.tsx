@@ -25,9 +25,9 @@ export function Drawer({
 
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay — القائمة الجانبية للموبايل فقط (السايدبار يغني عنها على الكمبيوتر) */}
       <div
-        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onClose}
@@ -35,13 +35,13 @@ export function Drawer({
 
       {/* Panel (slides from the RTL start = right) */}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 w-[82%] max-w-xs bg-surface shadow-2xl transition-transform duration-300 ${
+        className={`fixed inset-y-0 right-0 z-50 w-[82%] max-w-xs bg-surface shadow-2xl transition-transform duration-300 lg:hidden ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="bg-aurora flex items-center justify-between gap-3 p-5 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
           <div className="relative z-10 flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl btn-gradient shadow-soft overflow-hidden">
+            <div className="grid h-12 w-12 place-items-center rounded-xl btn-gradient shadow-soft overflow-hidden">
               {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={branding.logoUrl} alt="" className="h-full w-full object-cover" />
@@ -64,7 +64,7 @@ export function Drawer({
         </div>
 
         {/* Current user */}
-        <div className="mx-4 mt-4 flex items-center gap-3 rounded-2xl bg-surface-muted p-3">
+        <div className="mx-4 mt-4 flex items-center gap-3 rounded-lg bg-surface-muted p-3">
           <UserCircle2 className="h-10 w-10 text-primary" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-ink">
@@ -87,13 +87,19 @@ export function Drawer({
                 key={item.key}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98] ${
                   active
-                    ? "bg-primary-soft text-primary"
+                    ? `bg-surface-muted ${item.text}`
                     : "text-ink hover:bg-surface-muted"
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <span
+                  className={`grid h-9 w-9 place-items-center rounded-lg ${
+                    active ? `${item.grad} shadow-soft` : "bg-surface-muted text-ink-muted"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
                 {item.label}
               </Link>
             );
@@ -104,9 +110,11 @@ export function Drawer({
             <button
               type="button"
               onClick={onOpenMessages}
-              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-right text-sm font-semibold text-ink transition hover:bg-surface-muted active:scale-[0.98]"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-right text-sm font-semibold text-ink transition hover:bg-surface-muted active:scale-[0.98]"
             >
-              <MessageCircle className="h-5 w-5" />
+              <span className="grid h-9 w-9 place-items-center rounded-lg grad-green shadow-soft">
+                <MessageCircle className="h-5 w-5" />
+              </span>
               الرسائل
             </button>
           )}
@@ -117,7 +125,7 @@ export function Drawer({
           <form action={signOut}>
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-soft py-3 text-sm font-bold text-accent active:scale-95 transition"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-soft py-3 text-sm font-bold text-accent active:scale-95 transition"
             >
               <LogOut className="h-5 w-5" />
               تسجيل الخروج

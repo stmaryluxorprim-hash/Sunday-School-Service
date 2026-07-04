@@ -12,12 +12,14 @@
   --color-accent: 241 91 181;         /* rose-pink */
   --color-accent-soft: 255 224 242;
   --color-secondary: 0 187 249;       /* teal-cyan */
+  --color-secondary-soft: 209 240 255;
   --color-surface: 255 255 255;
   --color-surface-muted: 245 246 252;
   --color-ink: 30 27 56;
   --color-ink-muted: 110 110 135;
 
-  --radius: 1.25rem;
+  /* حواف أقل استدارة */
+  --radius: 0.55rem;
 }
 
 [data-theme="dark"] {
@@ -27,6 +29,7 @@
   --color-ink-muted: 165 165 195;
   --color-primary-soft: 60 52 120;
   --color-accent-soft: 90 40 75;
+  --color-secondary-soft: 20 70 95;
 }
 
 * {
@@ -39,13 +42,14 @@ body {
 }
 
 body {
-  /* Background tinted by the theme gradient colors (soft, elegant) */
+  /* خلفية أكثر حيوية وألواناً — تدرّج ثلاثي أقوى */
   background-color: rgb(var(--color-surface-muted));
   background-image: linear-gradient(
     160deg,
-    rgb(var(--color-primary) / 0.1),
-    rgb(var(--color-accent) / 0.08) 55%,
-    rgb(var(--color-secondary) / 0.06)
+    rgb(var(--color-primary) / 0.16),
+    rgb(var(--color-accent) / 0.13) 45%,
+    rgb(var(--color-secondary) / 0.14) 80%,
+    rgb(var(--color-primary) / 0.08)
   );
   background-attachment: fixed;
   color: rgb(var(--color-ink));
@@ -64,7 +68,7 @@ body {
   position: absolute;
   border-radius: 9999px;
   filter: blur(70px);
-  opacity: 0.45;
+  opacity: 0.55;
   z-index: 0;
   pointer-events: none;
 }
@@ -112,6 +116,51 @@ body {
     rgb(var(--color-accent))
   );
   color: #fff;
+}
+
+/* تدرّجات لونية إضافية للأيقونات والكروت — تنويع ألوان التطبيق */
+.grad-primary {
+  background: linear-gradient(115deg, rgb(var(--color-primary)), rgb(var(--color-secondary)));
+  color: #fff;
+}
+.grad-accent {
+  background: linear-gradient(115deg, rgb(var(--color-accent)), #ff8a3d);
+  color: #fff;
+}
+.grad-teal {
+  background: linear-gradient(115deg, #06b6d4, #10b981);
+  color: #fff;
+}
+.grad-amber {
+  background: linear-gradient(115deg, #f59e0b, #f43f5e);
+  color: #fff;
+}
+.grad-violet {
+  background: linear-gradient(115deg, #8b5cf6, #3b82f6);
+  color: #fff;
+}
+.grad-green {
+  background: linear-gradient(115deg, #22c55e, #14b8a6);
+  color: #fff;
+}
+
+/* شريط علوي ملوّن للكروت (لمسة لونية إضافية) */
+.card-topline {
+  position: relative;
+  overflow: hidden;
+}
+.card-topline::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-primary)),
+    rgb(var(--color-accent)),
+    rgb(var(--color-secondary))
+  );
 }
 
 /* Hide scrollbars for nav strips */

@@ -124,7 +124,12 @@ export default function StatsPage() {
   if (loading) {
     return (
       <div>
-        <PageHero title="الاحصائيات" subtitle="نظرة عامة على الخدمة" icon={BarChart3} />
+        <PageHero
+          title="الاحصائيات"
+          subtitle="نظرة عامة على الخدمة"
+          icon={BarChart3}
+          grad="grad-amber"
+        />
         <div className="grid place-items-center py-16 text-ink-muted">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
@@ -134,64 +139,72 @@ export default function StatsPage() {
 
   return (
     <div>
-      <PageHero title="الاحصائيات" subtitle="نظرة عامة على الخدمة" icon={BarChart3} />
+      <PageHero
+        title="الاحصائيات"
+        subtitle="نظرة عامة على الخدمة"
+        icon={BarChart3}
+        grad="grad-amber"
+      />
 
-      {/* بطاقات رئيسية */}
-      <div className="mb-3 grid grid-cols-2 gap-3">
+      {/* بطاقات رئيسية — 4 أعمدة على الكمبيوتر */}
+      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           icon={Users}
           value={stats.totalMembers}
           label="عدد المخدومين"
-          color="text-primary"
+          grad="grad-primary"
         />
         <StatCard
           icon={CalendarCheck}
           value={stats.presentToday}
           label="حضور اليوم"
-          color="text-emerald-600"
+          grad="grad-green"
         />
         <StatCard
           icon={Coins}
           value={stats.totalPoints}
           label="إجمالي النقاط"
-          color="text-accent"
+          grad="grad-amber"
         />
         <StatCard
           icon={TrendingUp}
           value={`${attendanceRate}%`}
           label="نسبة الحضور اليوم"
-          color="text-secondary"
+          grad="grad-violet"
         />
       </div>
 
       {/* الذكور/الإناث + فصول + مرات حضور */}
       <div className="mb-3 grid grid-cols-3 gap-2">
-        <MiniStat icon={UserRound} value={stats.males} label="ذكور" />
-        <MiniStat icon={UserRound} value={stats.females} label="إناث" />
-        <MiniStat icon={GraduationCap} value={stats.totalClasses} label="الفصول" />
+        <MiniStat icon={UserRound} value={stats.males} label="ذكور" color="text-sky-600" />
+        <MiniStat icon={UserRound} value={stats.females} label="إناث" color="text-pink-500" />
+        <MiniStat icon={GraduationCap} value={stats.totalClasses} label="الفصول" color="text-teal-600" />
       </div>
+
+      {/* على الكمبيوتر: التوزيع + الفصول جنباً إلى جنب */}
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-3">
 
       {/* توزيع الجنس (شريط) */}
       {stats.totalMembers > 0 && (
         <Card className="mb-3">
           <h3 className="mb-3 text-sm font-bold text-ink">توزيع المخدومين</h3>
-          <div className="flex h-3 w-full overflow-hidden rounded-full bg-surface-muted">
+          <div className="flex h-3 w-full overflow-hidden rounded bg-surface-muted">
             <div
-              className="h-full bg-primary"
+              className="h-full bg-sky-500"
               style={{ width: `${(stats.males / stats.totalMembers) * 100}%` }}
             />
             <div
-              className="h-full bg-accent"
+              className="h-full bg-pink-500"
               style={{ width: `${(stats.females / stats.totalMembers) * 100}%` }}
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-ink-muted">
             <span className="flex items-center gap-1">
-              <span className="h-2.5 w-2.5 rounded-full bg-primary" /> ذكور (
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> ذكور (
               {stats.males})
             </span>
             <span className="flex items-center gap-1">
-              <span className="h-2.5 w-2.5 rounded-full bg-accent" /> إناث (
+              <span className="h-2.5 w-2.5 rounded-full bg-pink-500" /> إناث (
               {stats.females})
             </span>
           </div>
@@ -209,7 +222,7 @@ export default function StatsPage() {
                   <span className="truncate font-semibold text-ink">{c.name}</span>
                   <span className="shrink-0 font-bold text-primary">{c.count}</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+                <div className="h-2 w-full overflow-hidden rounded bg-surface-muted">
                   <div
                     className="h-full btn-gradient"
                     style={{ width: `${(c.count / maxByClass) * 100}%` }}
@@ -220,6 +233,7 @@ export default function StatsPage() {
           </div>
         </Card>
       )}
+      </div>
 
       {stats.totalMembers === 0 && (
         <Card className="text-center">
@@ -238,16 +252,16 @@ function StatCard({
   icon: Icon,
   value,
   label,
-  color,
+  grad,
 }: {
   icon: typeof Users;
   value: number | string;
   label: string;
-  color: string;
+  grad: string;
 }) {
   return (
     <Card className="flex items-center gap-3">
-      <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-muted ${color}`}>
+      <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg shadow-soft ${grad}`}>
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0">
@@ -262,14 +276,16 @@ function MiniStat({
   icon: Icon,
   value,
   label,
+  color = "text-primary",
 }: {
   icon: typeof Users;
   value: number;
   label: string;
+  color?: string;
 }) {
   return (
-    <div className="animate-fade-up flex flex-col items-center gap-1 rounded-2xl bg-surface p-3 text-center shadow-card border border-white/40">
-      <Icon className="h-5 w-5 text-primary" />
+    <div className="animate-fade-up flex flex-col items-center gap-1 rounded-lg bg-surface p-3 text-center shadow-card border border-white/40">
+      <Icon className={`h-5 w-5 ${color}`} />
       <span className="text-lg font-bold text-ink">{value}</span>
       <span className="text-[10px] leading-tight text-ink-muted">{label}</span>
     </div>

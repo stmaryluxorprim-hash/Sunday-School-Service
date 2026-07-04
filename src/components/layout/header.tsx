@@ -24,11 +24,11 @@ export function Header({
 
   return (
     <header className="w-full">
-      <div className="glass border-b border-white/20 px-4 pt-[calc(env(safe-area-inset-top)+0.6rem)] pb-3">
-        <div className="flex items-center justify-between gap-3">
-          {/* Right side (RTL start): icon + name + slogan */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl btn-gradient shadow-soft overflow-hidden">
+      <div className="glass card-topline border-b border-white/20 px-4 pt-[calc(env(safe-area-inset-top)+0.6rem)] pb-3 lg:px-8">
+        <div className="flex items-center justify-between gap-3 lg:mx-auto lg:max-w-6xl">
+          {/* Right side (RTL start): icon + name + slogan — مخفية على الكمبيوتر (موجودة في السايدبار) */}
+          <div className="flex items-center gap-3 min-w-0 lg:hidden">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl btn-gradient shadow-soft overflow-hidden">
               {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -48,11 +48,18 @@ export function Header({
             </div>
           </div>
 
+          {/* عنوان مختصر للكمبيوتر */}
+          <div className="hidden min-w-0 lg:block">
+            <h1 className="truncate text-lg font-bold text-ink">
+              {branding.serviceName}
+            </h1>
+          </div>
+
           {/* Left side (RTL end): notifications + messages + date + menu */}
           <div className="flex items-center gap-2">
             <button
               onClick={onNotificationsClick}
-              className="relative grid h-10 w-10 place-items-center rounded-2xl bg-surface text-primary shadow-card active:scale-95 transition"
+              className="relative grid h-10 w-10 place-items-center rounded-lg bg-secondary-soft text-secondary shadow-card active:scale-95 transition"
               aria-label="الإشعارات"
             >
               <Bell className="h-5 w-5" />
@@ -64,22 +71,23 @@ export function Header({
             </button>
             <button
               onClick={onMessagesClick}
-              className="grid h-10 w-10 place-items-center rounded-2xl bg-surface text-primary shadow-card active:scale-95 transition"
+              className="grid h-10 w-10 place-items-center rounded-lg bg-accent-soft text-accent shadow-card active:scale-95 transition"
               aria-label="الرسائل"
             >
               <MessageCircle className="h-5 w-5" />
             </button>
             <button
               onClick={onDateClick}
-              className="flex items-center gap-1.5 rounded-2xl bg-primary-soft/70 px-3 py-2 text-xs font-semibold text-primary active:scale-95 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-primary-soft/70 px-3 py-2 text-xs font-semibold text-primary active:scale-95 transition"
               aria-label="اختيار التاريخ"
             >
               <CalendarDays className="h-4 w-4" />
               <span className="hidden xs:inline sm:inline">{selectedDate}</span>
             </button>
+            {/* زر القائمة — موبايل فقط (السايدبار يغني عنه على الكمبيوتر) */}
             <button
               onClick={onMenuClick}
-              className="grid h-10 w-10 place-items-center rounded-2xl bg-surface text-ink shadow-card active:scale-95 transition"
+              className="grid h-10 w-10 place-items-center rounded-lg bg-surface text-ink shadow-card active:scale-95 transition lg:hidden"
               aria-label="القائمة"
             >
               <Menu className="h-5 w-5" />
