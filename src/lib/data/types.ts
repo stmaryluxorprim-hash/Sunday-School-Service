@@ -112,7 +112,10 @@ export type ActionKey =
   | "call" // اتصال هاتفي
   | "sms" // رسالة SMS
   | "whatsapp" // رسالة واتساب
-  | "internal_message"; // رسالة داخلية (تطبيق الرسائل)
+  | "internal_message" // رسالة داخلية (تطبيق الرسائل)
+  | "qr_code" // إظهار QR Code المخدوم
+  | "details" // إظهار/تعديل بيانات المخدوم
+  | "delete"; // إلغاء (حذف) المخدوم
 
 /** الوظائف المتاحة الآن — تُضاف وظائف أخرى لاحقاً. */
 export const ACTION_OPTIONS: { value: ActionKey; label: string }[] = [
@@ -124,6 +127,9 @@ export const ACTION_OPTIONS: { value: ActionKey; label: string }[] = [
   { value: "sms", label: "رسالة SMS" },
   { value: "whatsapp", label: "رسالة واتساب" },
   { value: "internal_message", label: "رسالة داخلية" },
+  { value: "qr_code", label: "إظهار QR Code" },
+  { value: "details", label: "بيانات المخدوم" },
+  { value: "delete", label: "إلغاء المخدوم" },
 ];
 
 /** Generate a member code: codeWord + current epoch milliseconds. */

@@ -28,12 +28,15 @@ export function smsLink(stored: string | null, body?: string): string {
 
 /**
  * Build a WhatsApp wa.me link.
- * Stored "+201273447740" → "201273447740" (drop + and the local leading 0).
+ *
+ * Stored format is "+2" + 11 local digits (e.g. "+2" + "01273447740"), which
+ * already equals the international number Egypt "20" + 10 digits without the
+ * local leading 0 → "201273447740". So the wa.me number is simply the stored
+ * digits without the "+" (no extra digit must be dropped — dropping one was
+ * the bug that produced unreadable WhatsApp numbers).
  */
 export function whatsappLink(stored: string | null, text?: string): string {
-  let n = intlNumber(stored).replace(/^\+/, "");
-  // stored is "2" + "0XXXXXXXXXX" → we want "2" + "XXXXXXXXXX" (drop the 0)
-  if (n.startsWith("20")) n = "2" + n.slice(3); // 2 + 0 + 10 → 2 + 10
+  const n = intlNumber(stored).replace(/^\+/, "").replace(/\D/g, "");
   if (!n) return "";
   return text
     ? `https://wa.me/${n}?text=${encodeURIComponent(text)}`
