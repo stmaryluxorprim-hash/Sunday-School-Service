@@ -84,6 +84,8 @@ export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 export type ShowFilter =
   | "male"
   | "female"
+  | "present_today" // حضر في التاريخ المختار
+  | "absent_today" // لم يحضر في التاريخ المختار
   | "with_phone"
   | "no_phone"
   | "with_photo"
@@ -95,6 +97,8 @@ export type ShowFilter =
 export const SHOW_FILTERS: { value: ShowFilter; label: string }[] = [
   { value: "male", label: "ذكور" },
   { value: "female", label: "إناث" },
+  { value: "present_today", label: "حضر اليوم" },
+  { value: "absent_today", label: "لم يحضر اليوم" },
   { value: "with_phone", label: "لديه تليفون" },
   { value: "no_phone", label: "بدون تليفون" },
   { value: "with_photo", label: "لديه صورة" },

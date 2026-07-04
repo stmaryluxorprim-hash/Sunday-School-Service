@@ -55,13 +55,17 @@ type Group = {
   members: MemberRow[];
 };
 
-/** هل يجتاز المخدوم فلتر إظهار واحد؟ */
-function passesFilter(m: MemberRow, f: ShowFilter): boolean {
+/** هل يجتاز المخدوم فلتر إظهار واحد؟ (present = حضر في التاريخ المختار) */
+function passesFilter(m: MemberRow, f: ShowFilter, present: boolean): boolean {
   switch (f) {
     case "male":
       return m.gender === "male";
     case "female":
       return m.gender === "female";
+    case "present_today":
+      return present;
+    case "absent_today":
+      return !present;
     case "with_phone":
       return !!m.phone;
     case "no_phone":
@@ -183,12 +187,13 @@ export default function DataPage() {
         if (!hay.includes(needle)) return false;
       }
       if (controls.classId !== "all" && m.class_id !== controls.classId) return false;
+      const present = presentToday.has(m.id);
       for (const f of controls.filters) {
-        if (!passesFilter(m, f)) return false;
+        if (!passesFilter(m, f, present)) return false;
       }
       return true;
     });
-  }, [members, q, controls.classId, controls.filters]);
+  }, [members, q, controls.classId, controls.filters, presentToday]);
 
   // 2) ترتيب حسب المفتاح والاتجاه.
   const sorted = useMemo(() => {
