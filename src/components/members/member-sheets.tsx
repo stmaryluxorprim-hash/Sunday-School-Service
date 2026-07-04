@@ -7,7 +7,7 @@
  *  - MemberDeleteSheet:  تأكيد إلغاء (حذف) المخدوم نهائياً.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   X,
   Download,
@@ -16,6 +16,7 @@ import {
   Trash2,
   AlertTriangle,
   User,
+  Camera,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -33,6 +34,8 @@ import {
 } from "@/lib/data/types";
 import { updateMember, deleteMember, OpResult } from "@/lib/data/operations";
 import { DobSelect, DOB } from "@/components/ui/dob-select";
+import { ImageCropper } from "@/components/image/image-cropper";
+import { uploadImage } from "@/lib/storage/upload";
 import { PhoneField } from "./phone-field";
 
 /* ------------------------------------------------------------------ */
@@ -176,6 +179,13 @@ export function MemberDetailsSheet({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // الصورة: تغيير صورة المخدوم (قص + رفع مثل شاشة الإضافة)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
   // تعبئة النموذج من بيانات المخدوم عند الفتح
   useEffect(() => {
     if (!member) return;
@@ -188,6 +198,9 @@ export function MemberDetailsSheet({
     setNotes(member.notes || "");
     setGender(member.gender);
     setClassId(member.class_id || "");
+    setPhotoUrl(member.photo_url);
+    setPhotoPath(member.photo_path);
+    setCropFile(null);
     setError(null);
   }, [member]);
 
@@ -195,6 +208,22 @@ export function MemberDetailsSheet({
 
   const setName = (i: number, v: string) =>
     setNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
+
+  // بعد القص: ارفع الصورة الجديدة واحذف القديمة (تُحفَظ في الصف عند "حفظ التعديلات")
+  const handlePhoto = async (blob: Blob) => {
+    setCropFile(null);
+    setPhotoBusy(true);
+    try {
+      const { path, url } = await uploadImage(blob, "members", photoPath);
+      setPhotoPath(path);
+      setPhotoUrl(url);
+      setError(null);
+    } catch {
+      setError("تعذّر رفع الصورة.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -220,6 +249,8 @@ export function MemberDetailsSheet({
       notes: notes.trim() || null,
       gender,
       class_id: classId || null,
+      photo_path: photoPath,
+      photo_url: photoUrl,
     });
     setSaving(false);
     if (!res.ok) {
@@ -236,22 +267,45 @@ export function MemberDetailsSheet({
   return (
     <Sheet title={`بيانات — ${member.name || "—"}`} onClose={onClose}>
       <div className="space-y-3">
-        {/* صورة + ملخص */}
+        {/* صورة (قابلة للتغيير) + ملخص */}
         <div className="flex items-center gap-3 rounded-lg bg-surface-muted p-3">
-          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg btn-gradient text-white">
-            {member.photo_url ? (
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={photoBusy}
+            title="تغيير الصورة"
+            className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg btn-gradient text-white active:scale-95"
+          >
+            {photoBusy ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={member.photo_url} alt="" className="h-full w-full object-cover" />
+              <img src={photoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <User className="h-7 w-7" />
             )}
-          </div>
+            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/45 py-0.5 text-[9px] font-semibold text-white">
+              <Camera className="h-3 w-3" /> تغيير
+            </span>
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) setCropFile(f);
+              e.target.value = "";
+            }}
+          />
           <div className="min-w-0 text-xs text-ink-muted">
             <p>
               الحضور: <b className="text-ink">{member.attendance_count ?? 0}</b> —
               الرصيد: <b className="text-ink">{member.opening_balance ?? 0}</b>
             </p>
             <p className="truncate" dir="ltr">{member.code}</p>
+            <p className="mt-0.5 text-[10px]">اضغط على الصورة لتغييرها</p>
           </div>
         </div>
 
@@ -349,6 +403,17 @@ export function MemberDetailsSheet({
           حفظ التعديلات
         </button>
       </div>
+
+      {/* قصّ الصورة قبل الرفع (مثل شاشة الإضافة) */}
+      {cropFile && (
+        <ImageCropper
+          file={cropFile}
+          shape="circle"
+          outputSize={512}
+          onCancel={() => setCropFile(null)}
+          onConfirm={handlePhoto}
+        />
+      )}
     </Sheet>
   );
 }
