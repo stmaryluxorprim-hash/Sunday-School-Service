@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { Church, Mail, Lock, User, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Church, Mail, Lock, User, Loader2, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
 import { signIn, signUp, type AuthResult } from "./actions";
 import { useSettings } from "@/context/settings-context";
 
@@ -74,6 +75,7 @@ export default function LoginPage() {
             <form action={signInAction} className="space-y-3" key="signin">
               <Field icon={Mail} name="email" placeholder="البريد الإلكتروني" type="email" dir="ltr" autoComplete="email" />
               <Field icon={Lock} name="password" placeholder="كلمة المرور" type="password" dir="ltr" autoComplete="current-password" />
+              <RememberMe />
               <SubmitButton label="دخول" />
             </form>
           ) : (
@@ -81,12 +83,36 @@ export default function LoginPage() {
               <Field icon={User} name="fullName" placeholder="الاسم بالكامل" type="text" autoComplete="name" />
               <Field icon={Mail} name="email" placeholder="البريد الإلكتروني" type="email" dir="ltr" autoComplete="email" />
               <Field icon={Lock} name="password" placeholder="كلمة المرور (6 أحرف على الأقل)" type="password" dir="ltr" autoComplete="new-password" />
+              <RememberMe />
               <SubmitButton label="إنشاء الحساب" />
             </form>
           )}
         </div>
+
+        {/* Back to the entry gate (member or user) */}
+        <Link
+          href="/welcome"
+          className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold text-ink-muted transition hover:text-ink"
+        >
+          <ArrowRight className="h-4 w-4" />
+          لست خادماً؟ العودة لاختيار نوع الدخول
+        </Link>
       </div>
     </div>
+  );
+}
+
+function RememberMe() {
+  return (
+    <label className="flex cursor-pointer select-none items-center gap-2 px-1 text-sm font-semibold text-ink-muted">
+      <input
+        type="checkbox"
+        name="remember"
+        defaultChecked
+        className="h-4 w-4 accent-[var(--color-primary,#6d5dfc)]"
+      />
+      تذكرني على هذا الجهاز
+    </label>
   );
 }
 
