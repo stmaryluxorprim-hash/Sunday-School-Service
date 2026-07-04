@@ -18,6 +18,7 @@ const config: Config = {
         },
         secondary: {
           DEFAULT: "rgb(var(--color-secondary) / <alpha-value>)",
+          soft: "rgb(var(--color-secondary-soft) / <alpha-value>)",
         },
         surface: {
           DEFAULT: "rgb(var(--color-surface) / <alpha-value>)",
@@ -31,10 +32,15 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-arabic)", "Tajawal", "system-ui", "sans-serif"],
       },
+      // حواف أقل استدارة في كل التطبيق (تصغير المقياس بالكامل)
       borderRadius: {
-        xl: "1rem",
-        "2xl": "1.5rem",
-        "3xl": "2rem",
+        sm: "0.2rem",
+        DEFAULT: "0.3rem",
+        md: "0.375rem",
+        lg: "0.45rem",
+        xl: "0.55rem",
+        "2xl": "0.7rem",
+        "3xl": "0.9rem",
       },
       boxShadow: {
         soft: "0 8px 30px -10px rgb(var(--color-primary) / 0.25)",

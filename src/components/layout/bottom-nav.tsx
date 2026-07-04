@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/config/navigation";
 
+/** شريط التنقّل السفلي — للموبايل فقط (يختفي على الشاشات الكبيرة). */
 export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-30 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 inset-x-0 z-30 pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="mx-auto max-w-md px-3 pb-2">
-        <div className="glass flex items-center justify-between rounded-3xl px-2 py-1.5 shadow-card border border-white/30">
+        <div className="glass flex items-center justify-between rounded-2xl px-2 py-1.5 shadow-card border border-white/30">
           {NAV_ITEMS.map((item) => {
             const active =
               item.href === "/"
@@ -24,15 +25,15 @@ export function BottomNav() {
                 className="relative flex flex-1 flex-col items-center gap-1 py-2 transition active:scale-95"
               >
                 <span
-                  className={`grid h-9 w-9 place-items-center rounded-2xl transition ${
-                    active ? "btn-gradient text-white shadow-soft" : "text-ink-muted"
+                  className={`grid h-9 w-9 place-items-center rounded-lg transition ${
+                    active ? `${item.grad} shadow-soft` : "text-ink-muted"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
                 </span>
                 <span
                   className={`text-[10px] font-semibold transition ${
-                    active ? "text-primary" : "text-ink-muted"
+                    active ? item.text : "text-ink-muted"
                   }`}
                 >
                   {item.label}

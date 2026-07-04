@@ -190,8 +190,8 @@ export function MessagingApp({
       {/* الخلفية */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* اللوحة */}
-      <div className="absolute inset-0 mx-auto flex max-w-md flex-col bg-surface shadow-2xl">
+      {/* اللوحة — ملء الشاشة على الموبايل، نافذة أوسع ومرتفعة على الكمبيوتر */}
+      <div className="absolute inset-0 mx-auto flex max-w-md flex-col bg-surface shadow-2xl lg:inset-y-8 lg:max-w-2xl lg:overflow-hidden lg:rounded-xl lg:border lg:border-white/30">
         {/* رأس تطبيق الرسائل */}
         <div className="glass flex items-center gap-3 border-b border-white/20 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3">
           {active ? (

@@ -13,6 +13,8 @@ import {
   CalendarCheck,
   CalendarX,
   Coins,
+  Phone,
+  MessageSquare,
   MessageCircle,
 } from "lucide-react";
 import { PageHero } from "@/components/ui/page-card";
@@ -30,7 +32,7 @@ import {
   ControlsState,
   DEFAULT_CONTROLS,
 } from "@/components/members/data-controls";
-import { ContactSheet } from "@/components/members/contact-sheet";
+import { telLink, smsLink, whatsappLink, hasPhone } from "@/lib/data/contact";
 import {
   markAttendance,
   unmarkAttendance,
@@ -94,8 +96,6 @@ export default function DataPage() {
   // حالة العملية الجارية + رسالة (toast)
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
-  // ورقة التواصل (اتصال/SMS/واتساب/رسالة داخلية)
-  const [contactFor, setContactFor] = useState<MemberRow | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -246,9 +246,30 @@ export default function DataPage() {
     async (m: MemberRow, action: ActionKey) => {
       if (busyId) return;
 
-      // وظيفة التواصل تفتح ورقة الخيارات (اتصال/SMS/واتساب/رسالة داخلية)
-      if (action === "contact") {
-        setContactFor(m);
+      // وظائف التواصل المباشرة: اتصال / SMS / واتساب
+      if (action === "call" || action === "sms" || action === "whatsapp") {
+        if (!hasPhone(m.phone)) {
+          setToast({ ok: false, text: "لا يوجد رقم تليفون لهذا المخدوم" });
+          return;
+        }
+        const greeting = `مرحباً ${m.name || ""}`.trim();
+        if (action === "call") {
+          window.location.href = telLink(m.phone);
+        } else if (action === "sms") {
+          window.location.href = smsLink(m.phone, greeting);
+        } else {
+          window.open(whatsappLink(m.phone, greeting), "_blank", "noopener");
+        }
+        return;
+      }
+
+      // رسالة داخلية: تفتح تطبيق الرسائل على محادثة هذا المخدوم
+      if (action === "internal_message") {
+        window.dispatchEvent(
+          new CustomEvent("open-internal-message", {
+            detail: { memberId: m.id, memberName: m.name },
+          })
+        );
         return;
       }
 
@@ -276,40 +297,39 @@ export default function DataPage() {
     [busyId, date, loadAttendance, controls.points]
   );
 
-  // فتح محادثة داخلية مع مخدوم عبر تطبيق الرسائل في الهيدر
-  const openInternalMessage = (m: MemberRow) => {
-    window.dispatchEvent(
-      new CustomEvent("open-internal-message", {
-        detail: { memberId: m.id, memberName: m.name },
-      })
-    );
-  };
-
   return (
     <div>
-      <PageHero title="البيانات" subtitle="إدارة بيانات المخدومين" icon={Database} />
+      <PageHero
+        title="البيانات"
+        subtitle="إدارة بيانات المخدومين"
+        icon={Database}
+        grad="grad-teal"
+      />
 
-      {/* شريط التحكم: الفصل / ترتيب حسب / إظهار / الوظيفة */}
-      <DataControls classes={classes} value={controls} onChange={setControls} />
+      {/* على الكمبيوتر: شريط التحكم + البحث جنباً إلى جنب */}
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-3">
+        {/* شريط التحكم: الفصل / ترتيب حسب / إظهار / الوظيفة */}
+        <DataControls classes={classes} value={controls} onChange={setControls} />
 
-      {/* بحث + إضافة */}
-      <div className="animate-fade-up mb-4 rounded-3xl bg-surface p-3 shadow-card border border-white/40">
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-2xl bg-surface-muted px-3 py-2.5">
-            <Search className="h-4 w-4 text-ink-muted" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="بحث بالاسم أو الكود أو التليفون..."
-              className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
-            />
+        {/* بحث + إضافة */}
+        <div className="animate-fade-up mb-4 rounded-xl bg-surface p-3 shadow-card border border-white/40 lg:mb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 items-center gap-2 rounded-lg bg-surface-muted px-3 py-2.5">
+              <Search className="h-4 w-4 text-ink-muted" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="بحث بالاسم أو الكود أو التليفون..."
+                className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
+              />
+            </div>
+            <Link
+              href="/data/add"
+              className="grid h-11 w-11 place-items-center rounded-lg grad-teal text-white shadow-soft active:scale-95"
+            >
+              <Plus className="h-5 w-5" />
+            </Link>
           </div>
-          <Link
-            href="/data/add"
-            className="grid h-11 w-11 place-items-center rounded-2xl btn-gradient text-white shadow-soft active:scale-95"
-          >
-            <Plus className="h-5 w-5" />
-          </Link>
         </div>
       </div>
 
@@ -318,13 +338,13 @@ export default function DataPage() {
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : members.length === 0 ? (
-        <div className="animate-fade-up rounded-3xl bg-surface p-8 text-center shadow-card border border-white/40">
+        <div className="animate-fade-up rounded-xl bg-surface p-8 text-center shadow-card border border-white/40">
           <User className="mx-auto mb-2 h-10 w-10 text-primary" />
           <p className="text-sm font-semibold text-ink">لا يوجد مخدومين بعد</p>
           <p className="mt-1 text-xs text-ink-muted">اضغط + لإضافة مخدوم</p>
         </div>
       ) : sorted.length === 0 ? (
-        <div className="animate-fade-up rounded-3xl bg-surface p-8 text-center shadow-card border border-white/40">
+        <div className="animate-fade-up rounded-xl bg-surface p-8 text-center shadow-card border border-white/40">
           <Search className="mx-auto mb-2 h-10 w-10 text-primary" />
           <p className="text-sm font-semibold text-ink">لا نتائج مطابقة</p>
           <p className="mt-1 text-xs text-ink-muted">جرّب تغيير الفصل أو الفلاتر</p>
@@ -342,14 +362,15 @@ export default function DataPage() {
             return (
               <section
                 key={key}
-                className="animate-fade-up overflow-hidden rounded-3xl bg-surface shadow-card border border-white/40"
+                className="animate-fade-up overflow-hidden rounded-xl bg-surface shadow-card border border-white/40"
+                style={{ borderTop: `3px solid ${primary}` }}
               >
                 <button
                   onClick={() => toggle(key)}
                   className="flex w-full items-center gap-3 p-3 text-right active:scale-[0.99]"
                 >
                   <div
-                    className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl text-white shadow-soft"
+                    className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg text-white shadow-soft"
                     style={{ background: `linear-gradient(100deg, ${primary}, ${accent})` }}
                   >
                     {g.cls?.image_url ? (
@@ -371,9 +392,9 @@ export default function DataPage() {
                 </button>
 
                 {!isCollapsed && (
-                  <div className="space-y-2 px-3 pb-3">
+                  <div className="space-y-2 px-3 pb-3 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0 xl:grid-cols-3">
                     {g.members.length === 0 ? (
-                      <p className="rounded-2xl bg-surface-muted px-3 py-3 text-center text-xs text-ink-muted">
+                      <p className="rounded-lg bg-surface-muted px-3 py-3 text-center text-xs text-ink-muted lg:col-span-full">
                         لا يوجد مخدومين في هذا الفصل
                       </p>
                     ) : (
@@ -395,8 +416,8 @@ export default function DataPage() {
           })}
         </div>
       ) : (
-        <div className="animate-fade-up rounded-3xl bg-surface p-3 shadow-card border border-white/40">
-          <div className="space-y-2">
+        <div className="animate-fade-up rounded-xl bg-surface p-3 shadow-card border border-white/40">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0 xl:grid-cols-3">
             {sorted.map((m) => (
               <MemberItem
                 key={m.id}
@@ -411,18 +432,11 @@ export default function DataPage() {
         </div>
       )}
 
-      {/* ورقة التواصل */}
-      <ContactSheet
-        member={contactFor}
-        onClose={() => setContactFor(null)}
-        onInternalMessage={openInternalMessage}
-      />
-
       {/* toast */}
       {toast && (
         <div className="fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
           <div
-            className={`animate-fade-up rounded-2xl px-4 py-2.5 text-sm font-semibold text-white shadow-soft ${
+            className={`animate-fade-up rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-soft ${
               toast.ok ? "bg-emerald-600" : "bg-rose-600"
             }`}
           >
@@ -434,19 +448,38 @@ export default function DataPage() {
   );
 }
 
-/** زر تنفيذ الوظيفة حسب نوعها. */
-function actionMeta(action: ActionKey) {
+/** أيقونة واتساب بسيطة (SVG) — تجنّباً لإضافة اعتمادية جديدة. */
+function WhatsAppIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.16.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42-.14 0-.31-.02-.47-.02-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29z" />
+    </svg>
+  );
+}
+
+/** زر تنفيذ الوظيفة حسب نوعها — لكل وظيفة لون مميّز. */
+function actionMeta(action: ActionKey): {
+  Icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  cls: string;
+} {
   switch (action) {
     case "attendance":
-      return { Icon: CalendarCheck, label: "حضور" };
+      return { Icon: CalendarCheck, label: "حضور", cls: "bg-emerald-600" };
     case "unattendance":
-      return { Icon: CalendarX, label: "إلغاء" };
+      return { Icon: CalendarX, label: "إلغاء", cls: "bg-rose-600" };
     case "add_points":
-      return { Icon: Coins, label: "+ نقاط" };
+      return { Icon: Coins, label: "+ نقاط", cls: "bg-amber-500" };
     case "deduct_points":
-      return { Icon: Coins, label: "- نقاط" };
-    case "contact":
-      return { Icon: MessageCircle, label: "تواصل" };
+      return { Icon: Coins, label: "- نقاط", cls: "bg-orange-600" };
+    case "call":
+      return { Icon: Phone, label: "اتصال", cls: "bg-sky-600" };
+    case "sms":
+      return { Icon: MessageSquare, label: "SMS", cls: "bg-violet-600" };
+    case "whatsapp":
+      return { Icon: WhatsAppIcon, label: "واتساب", cls: "bg-[#25D366]" };
+    case "internal_message":
+      return { Icon: MessageCircle, label: "رسالة", cls: "btn-gradient" };
   }
 }
 
@@ -463,10 +496,10 @@ function MemberItem({
   busy: boolean;
   onRun: () => void;
 }) {
-  const { Icon, label } = actionMeta(action);
+  const { Icon, label, cls } = actionMeta(action);
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-surface-muted p-2.5">
-      <div className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full btn-gradient text-white">
+    <div className="flex items-center gap-3 rounded-lg bg-surface-muted p-2.5">
+      <div className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl btn-gradient text-white">
         {m.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
@@ -479,18 +512,18 @@ function MemberItem({
         <p className="truncate font-bold text-ink">{m.name || "—"}</p>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           {/* badge عدد مرات الحضور */}
-          <span className="inline-flex items-center gap-1 rounded-lg bg-primary-soft px-1.5 py-0.5 text-[10px] font-bold text-primary">
+          <span className="inline-flex items-center gap-1 rounded bg-secondary-soft px-1.5 py-0.5 text-[10px] font-bold text-secondary">
             <CalendarCheck className="h-3 w-3" />
             {m.attendance_count ?? 0} حضور
           </span>
           {/* badge الرصيد/النقاط */}
-          <span className="inline-flex items-center gap-1 rounded-lg bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold text-accent">
+          <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
             <Coins className="h-3 w-3" />
             {m.opening_balance ?? 0}
           </span>
           {/* علامة حضور اليوم المختار */}
           {present && (
-            <span className="rounded-lg bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
               ✓ حضر اليوم
             </span>
           )}
@@ -502,7 +535,7 @@ function MemberItem({
         onClick={onRun}
         disabled={busy}
         title={label}
-        className="flex shrink-0 items-center gap-1 rounded-xl btn-gradient px-2.5 py-2 text-[11px] font-bold text-white shadow-soft active:scale-95 disabled:opacity-60"
+        className={`flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-[11px] font-bold text-white shadow-soft active:scale-95 disabled:opacity-60 ${cls}`}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
         <span className="hidden xs:inline">{label}</span>

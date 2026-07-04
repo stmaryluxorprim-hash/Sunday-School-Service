@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, ReactNode } from "react";
 import { Header } from "./header";
 import { Drawer } from "./drawer";
+import { Sidebar } from "./sidebar";
 import { DateSheet } from "./date-sheet";
 import { BottomNav } from "./bottom-nav";
 import { MessagingApp } from "@/components/messaging/messaging-app";
@@ -92,9 +93,16 @@ function Shell({
 
   return (
     <div className="bg-aurora min-h-screen">
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col">
+      {/* الشريط الجانبي — واجهة الكمبيوتر فقط (lg+) */}
+      <Sidebar
+        profile={profile}
+        onOpenMessages={() => setMessagesOpen(true)}
+      />
+
+      {/* المحتوى: عمود موبايل ضيّق — وعلى الشاشات الكبيرة مساحة واسعة بجانب السايدبار */}
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col lg:me-0 lg:ms-72 lg:max-w-none">
         {/* الهيدر ثابت أعلى الشاشة ولا يتحرّك مع المحتوى */}
-        <div className="fixed inset-x-0 top-0 z-30 mx-auto max-w-md">
+        <div className="fixed inset-x-0 top-0 z-30 mx-auto max-w-md lg:ms-72 lg:max-w-none">
           <Header
             onMenuClick={() => setMenuOpen(true)}
             onDateClick={() => setDateOpen(true)}
@@ -106,8 +114,8 @@ function Shell({
         </div>
 
         {/* حشوة علوية بمقدار ارتفاع الهيدر حتى لا يختفي المحتوى تحته */}
-        <main className="flex-1 px-4 pb-28 pt-[calc(env(safe-area-inset-top)+5.25rem)]">
-          {children}
+        <main className="flex-1 px-4 pb-28 pt-[calc(env(safe-area-inset-top)+5.25rem)] lg:px-8 lg:pb-10 lg:pt-[calc(env(safe-area-inset-top)+5.5rem)]">
+          <div className="lg:mx-auto lg:max-w-6xl">{children}</div>
         </main>
 
         <BottomNav />

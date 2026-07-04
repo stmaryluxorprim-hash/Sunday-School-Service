@@ -10,6 +10,7 @@ const SETTINGS_CARDS = [
     desc: "اسم الخدمة، الشعار، الألوان، واللوجو",
     href: "/settings/identity",
     icon: Palette,
+    grad: "grad-accent",
   },
   {
     key: "classes",
@@ -17,6 +18,7 @@ const SETTINGS_CARDS = [
     desc: "إضافة وتعديل وحذف الفصول",
     href: "/settings/classes",
     icon: GraduationCap,
+    grad: "grad-teal",
   },
   // Future cards (RBAC step):
   {
@@ -25,6 +27,7 @@ const SETTINGS_CARDS = [
     desc: "إدارة الصلاحيات (RBAC) — قريباً",
     href: "/settings",
     icon: ShieldCheck,
+    grad: "grad-violet",
     disabled: true,
   },
   {
@@ -33,6 +36,7 @@ const SETTINGS_CARDS = [
     desc: "إدارة المستخدمين والملفات — قريباً",
     href: "/settings",
     icon: Users,
+    grad: "grad-amber",
     disabled: true,
   },
 ];
@@ -40,19 +44,26 @@ const SETTINGS_CARDS = [
 export default function SettingsPage() {
   return (
     <div>
-      <PageHero title="الإعدادات" subtitle="تخصيص التطبيق" icon={SettingsIcon} />
+      <PageHero
+        title="الإعدادات"
+        subtitle="تخصيص التطبيق"
+        icon={SettingsIcon}
+        grad="grad-accent"
+      />
 
-      <div className="space-y-4">
+      <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
         {SETTINGS_CARDS.map((card) => {
           const Icon = card.icon;
           const disabled = "disabled" in card && card.disabled;
           const inner = (
             <div
-              className={`animate-fade-up flex items-center gap-4 rounded-3xl bg-surface p-4 shadow-card border border-white/40 transition ${
-                disabled ? "opacity-50" : "active:scale-[0.98]"
+              className={`animate-fade-up flex items-center gap-4 rounded-xl bg-surface p-4 shadow-card border border-white/40 transition ${
+                disabled ? "opacity-50" : "active:scale-[0.98] hover:shadow-soft"
               }`}
             >
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl btn-gradient text-white shadow-soft">
+              <div
+                className={`grid h-12 w-12 shrink-0 place-items-center rounded-lg text-white shadow-soft ${card.grad}`}
+              >
                 <Icon className="h-6 w-6" />
               </div>
               <div className="min-w-0 flex-1">
