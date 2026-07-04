@@ -2,7 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { REMEMBER_COOKIE, REMEMBER_MAX_AGE } from "@/lib/auth/remember";
 
 export type AuthResult = {
   error?: string;
@@ -27,9 +29,21 @@ function translateError(message: string): string {
   return "حدث خطأ. حاول مرة أخرى.";
 }
 
+/** Persist the "تذكرني" choice so the middleware can shape auth cookies. */
+function setRememberChoice(remember: boolean) {
+  cookies().set(REMEMBER_COOKIE, remember ? "1" : "0", {
+    path: "/",
+    sameSite: "lax",
+    // The preference cookie itself: persistent when remembering,
+    // session-only otherwise (so both cookies expire together).
+    ...(remember ? { maxAge: REMEMBER_MAX_AGE } : {}),
+  });
+}
+
 export async function signIn(_prev: AuthResult, formData: FormData): Promise<AuthResult> {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
+  const remember = formData.get("remember") === "on";
 
   if (!email || !password) {
     return { error: "يرجى إدخال البريد الإلكتروني وكلمة المرور." };
@@ -42,6 +56,7 @@ export async function signIn(_prev: AuthResult, formData: FormData): Promise<Aut
     return { error: translateError(error.message) };
   }
 
+  setRememberChoice(remember);
   revalidatePath("/", "layout");
   redirect("/");
 }
@@ -50,6 +65,7 @@ export async function signUp(_prev: AuthResult, formData: FormData): Promise<Aut
   const fullName = String(formData.get("fullName") || "").trim();
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
+  const remember = formData.get("remember") === "on";
 
   if (!fullName || !email || !password) {
     return { error: "يرجى ملء جميع الحقول." };
@@ -78,6 +94,7 @@ export async function signUp(_prev: AuthResult, formData: FormData): Promise<Aut
     };
   }
 
+  setRememberChoice(remember);
   revalidatePath("/", "layout");
   redirect("/");
 }
@@ -85,6 +102,7 @@ export async function signUp(_prev: AuthResult, formData: FormData): Promise<Aut
 export async function signOut(): Promise<void> {
   const supabase = createClient();
   await supabase.auth.signOut();
+  cookies().delete(REMEMBER_COOKIE);
   revalidatePath("/", "layout");
-  redirect("/login");
+  redirect("/welcome");
 }

@@ -4,9 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // If Supabase isn't configured yet, send users to login instead of crashing.
+  // If Supabase isn't configured yet, send visitors to the entry gate instead of crashing.
   if (!isSupabaseConfigured) {
-    redirect("/login");
+    redirect("/welcome");
   }
 
   const supabase = createClient();
