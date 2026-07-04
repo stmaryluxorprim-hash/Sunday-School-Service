@@ -16,6 +16,9 @@ import {
   Phone,
   MessageSquare,
   MessageCircle,
+  QrCode,
+  UserPen,
+  Trash2,
 } from "lucide-react";
 import { PageHero } from "@/components/ui/page-card";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +36,11 @@ import {
   DEFAULT_CONTROLS,
 } from "@/components/members/data-controls";
 import { telLink, smsLink, whatsappLink, hasPhone } from "@/lib/data/contact";
+import {
+  MemberQrSheet,
+  MemberDetailsSheet,
+  MemberDeleteSheet,
+} from "@/components/members/member-sheets";
 import {
   markAttendance,
   unmarkAttendance,
@@ -96,6 +104,10 @@ export default function DataPage() {
   // حالة العملية الجارية + رسالة (toast)
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  // أوراق الوظائف: QR / بيانات / إلغاء
+  const [qrFor, setQrFor] = useState<MemberRow | null>(null);
+  const [detailsFor, setDetailsFor] = useState<MemberRow | null>(null);
+  const [deleteFor, setDeleteFor] = useState<MemberRow | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -273,6 +285,24 @@ export default function DataPage() {
         return;
       }
 
+      // إظهار QR Code المخدوم
+      if (action === "qr_code") {
+        setQrFor(m);
+        return;
+      }
+
+      // إظهار/تعديل بيانات المخدوم
+      if (action === "details") {
+        setDetailsFor(m);
+        return;
+      }
+
+      // إلغاء المخدوم (مع تأكيد)
+      if (action === "delete") {
+        setDeleteFor(m);
+        return;
+      }
+
       setBusyId(m.id);
       try {
         let res: OpResult;
@@ -432,6 +462,27 @@ export default function DataPage() {
         </div>
       )}
 
+      {/* ورقة QR Code */}
+      <MemberQrSheet member={qrFor} onClose={() => setQrFor(null)} />
+
+      {/* ورقة بيانات المخدوم (عرض + تعديل) */}
+      <MemberDetailsSheet
+        member={detailsFor}
+        classes={classes}
+        onClose={() => setDetailsFor(null)}
+        onSaved={applyResult}
+      />
+
+      {/* ورقة تأكيد إلغاء المخدوم */}
+      <MemberDeleteSheet
+        member={deleteFor}
+        onClose={() => setDeleteFor(null)}
+        onDeleted={(id, message) => {
+          setMembers((prev) => prev.filter((x) => x.id !== id));
+          setToast({ ok: true, text: message });
+        }}
+      />
+
       {/* toast */}
       {toast && (
         <div className="fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
@@ -480,6 +531,12 @@ function actionMeta(action: ActionKey): {
       return { Icon: WhatsAppIcon, label: "واتساب", cls: "bg-[#25D366]" };
     case "internal_message":
       return { Icon: MessageCircle, label: "رسالة", cls: "btn-gradient" };
+    case "qr_code":
+      return { Icon: QrCode, label: "QR", cls: "bg-slate-700" };
+    case "details":
+      return { Icon: UserPen, label: "بيانات", cls: "grad-teal" };
+    case "delete":
+      return { Icon: Trash2, label: "إلغاء", cls: "bg-rose-700" };
   }
 }
 

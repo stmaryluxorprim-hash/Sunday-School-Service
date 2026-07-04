@@ -98,6 +98,36 @@ export function isPointsAction(a: ActionKey): boolean {
   return a === "add_points" || a === "deduct_points";
 }
 
+/** تعديل بيانات مخدوم — يُحدَّث فقط ما يُمرَّر في patch. */
+export async function updateMember(
+  memberId: string,
+  patch: Partial<MemberRow>
+): Promise<OpResult> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("members")
+    .update(patch)
+    .eq("id", memberId)
+    .select("*")
+    .single();
+  if (error || !data) {
+    if ((error?.message || "").includes("duplicate"))
+      return { ok: false, message: "هذا الكود مستخدم من قبل" };
+    return { ok: false, message: "تعذّر حفظ التعديلات" };
+  }
+  return { ok: true, member: data as MemberRow, message: "تم حفظ التعديلات" };
+}
+
+/** إلغاء (حذف) مخدوم نهائياً. */
+export async function deleteMember(
+  memberId: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("members").delete().eq("id", memberId);
+  if (error) return { ok: false, message: "تعذّر إلغاء المخدوم" };
+  return { ok: true, message: "تم إلغاء المخدوم" };
+}
+
 /** البحث عن مخدوم بالكود (المستخدم في الماسح). */
 export async function findMemberByCode(
   code: string
