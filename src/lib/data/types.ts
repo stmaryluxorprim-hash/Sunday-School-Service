@@ -22,6 +22,8 @@ export type ClassRow = {
   service_days: string[];
   color_primary: string;
   color_accent: string;
+  /** بروفايل البطاقة الافتراضي للفصل (يُستخدم تلقائياً في الطباعة). */
+  default_card_profile_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };

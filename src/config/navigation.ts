@@ -1,4 +1,4 @@
-import { Home, Database, ScanLine, BarChart3, Settings, LucideIcon } from "lucide-react";
+import { Home, Database, ScanLine, BarChart3, Printer, Settings, LucideIcon } from "lucide-react";
 
 /**
  * The five main pages. Each item can later be gated by an RBAC permission key,
@@ -21,5 +21,6 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "data", label: "البيانات", href: "/data", icon: Database, permission: "page.data.view", grad: "grad-teal", text: "text-teal-600" },
   { key: "scanner", label: "الماسح", href: "/scanner", icon: ScanLine, permission: "page.scanner.view", grad: "grad-violet", text: "text-violet-600" },
   { key: "stats", label: "الاحصائيات", href: "/stats", icon: BarChart3, permission: "page.stats.view", grad: "grad-amber", text: "text-amber-600" },
+  { key: "print", label: "الطباعة", href: "/print", icon: Printer, permission: "page.print.view", grad: "grad-green", text: "text-green-600" },
   { key: "settings", label: "الإعدادات", href: "/settings", icon: Settings, permission: "page.settings.view", grad: "grad-accent", text: "text-accent" },
 ];
