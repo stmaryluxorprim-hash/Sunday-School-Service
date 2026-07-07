@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Database,
   Search,
@@ -84,6 +85,7 @@ function passesFilter(m: MemberRow, f: ShowFilter, present: boolean): boolean {
 }
 
 export default function DataPage() {
+  const router = useRouter();
   const { date } = useSelectedDate(); // التاريخ المختار من الهيدر (YYYY-MM-DD)
   const { branding, ready: settingsReady } = useSettings();
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -280,12 +282,10 @@ export default function DataPage() {
         return;
       }
 
-      // رسالة داخلية: تفتح تطبيق الرسائل على محادثة هذا المخدوم
+      // رسالة داخلية: تفتح صفحة الرسائل الداخلية على محادثة هذا المخدوم
       if (action === "internal_message") {
-        window.dispatchEvent(
-          new CustomEvent("open-internal-message", {
-            detail: { memberId: m.id, memberName: m.name },
-          })
+        router.push(
+          `/messages?member=${m.id}&name=${encodeURIComponent(m.name)}`
         );
         return;
       }
@@ -329,7 +329,7 @@ export default function DataPage() {
         setBusyId(null);
       }
     },
-    [busyId, date, loadAttendance, controls.points]
+    [busyId, date, loadAttendance, controls.points, router]
   );
 
   return (

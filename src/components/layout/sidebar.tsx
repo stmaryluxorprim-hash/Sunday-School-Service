@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, UserCircle2, Church, MessageCircle } from "lucide-react";
+import { LogOut, UserCircle2, Church } from "lucide-react";
 import { NAV_ITEMS } from "@/config/navigation";
 import { useSettings } from "@/context/settings-context";
 import { signOut } from "@/app/login/actions";
@@ -13,10 +13,8 @@ import { signOut } from "@/app/login/actions";
  */
 export function Sidebar({
   profile,
-  onOpenMessages,
 }: {
   profile?: { id?: string; name: string; email: string } | null;
-  onOpenMessages?: () => void;
 }) {
   const pathname = usePathname();
   const { branding } = useSettings();
@@ -41,7 +39,7 @@ export function Sidebar({
 
       {/* التنقّل */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((i) => !i.sideOnly).map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -67,18 +65,33 @@ export function Sidebar({
           );
         })}
 
-        {onOpenMessages && (
-          <button
-            type="button"
-            onClick={onOpenMessages}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-right text-sm font-semibold text-ink transition hover:bg-surface-muted/70"
-          >
-            <span className="grid h-9 w-9 place-items-center rounded-lg grad-green shadow-soft">
-              <MessageCircle className="h-5 w-5" />
-            </span>
-            الرسائل
-          </button>
-        )}
+        {/* أدوات إضافية — من القائمة الجانبية فقط */}
+        <p className="mt-3 px-3 text-[11px] font-bold text-ink-muted">أدوات إضافية</p>
+        {NAV_ITEMS.filter((i) => i.sideOnly).map((item) => {
+          const active = pathname.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                active
+                  ? "bg-surface-muted " + item.text
+                  : "text-ink hover:bg-surface-muted/70"
+              }`}
+            >
+              <span
+                className={`grid h-9 w-9 place-items-center rounded-lg ${
+                  active ? `${item.grad} shadow-soft` : "bg-surface-muted text-ink-muted"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+              </span>
+              {item.label}
+            </Link>
+          );
+        })}
+
       </nav>
 
       {/* المستخدم الحالي + خروج */}

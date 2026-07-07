@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Menu, CalendarDays, Church, MessageCircle, Bell } from "lucide-react";
 import { useSettings } from "@/context/settings-context";
 
 type HeaderProps = {
   onMenuClick: () => void;
   onDateClick: () => void;
-  onMessagesClick: () => void;
   onNotificationsClick: () => void;
   unreadCount?: number;
   selectedDate: string; // already formatted in Arabic
@@ -15,7 +15,6 @@ type HeaderProps = {
 export function Header({
   onMenuClick,
   onDateClick,
-  onMessagesClick,
   onNotificationsClick,
   unreadCount = 0,
   selectedDate,
@@ -69,13 +68,13 @@ export function Header({
                 </span>
               )}
             </button>
-            <button
-              onClick={onMessagesClick}
-              className="grid h-10 w-10 place-items-center rounded-lg bg-accent-soft text-accent shadow-card active:scale-95 transition"
-              aria-label="الرسائل"
+            <Link
+              href="/messages"
+              className="grid h-10 w-10 place-items-center rounded-lg bg-primary-soft/70 text-primary shadow-card active:scale-95 transition"
+              aria-label="الرسائل الداخلية"
             >
               <MessageCircle className="h-5 w-5" />
-            </button>
+            </Link>
             <button
               onClick={onDateClick}
               className="flex items-center gap-1.5 rounded-lg bg-primary-soft/70 px-3 py-2 text-xs font-semibold text-primary active:scale-95 transition"

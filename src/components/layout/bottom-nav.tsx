@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/config/navigation";
+import { BOTTOM_NAV_ITEMS } from "@/config/navigation";
 
-/** شريط التنقّل السفلي — للموبايل فقط (يختفي على الشاشات الكبيرة). */
+/** شريط التنقّل السفلي — للموبايل فقط (يختفي على الشاشات الكبيرة).
+ *  يعرض الصفحات الرئيسية فقط — صفحات القائمة الجانبية (sideOnly) لا تظهر هنا. */
 export function BottomNav() {
   const pathname = usePathname();
 
@@ -12,7 +13,7 @@ export function BottomNav() {
     <nav className="fixed bottom-0 inset-x-0 z-30 pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="mx-auto max-w-md px-3 pb-2">
         <div className="glass flex items-center justify-between rounded-2xl px-2 py-1.5 shadow-card border border-white/30">
-          {NAV_ITEMS.map((item) => {
+          {BOTTOM_NAV_ITEMS.map((item) => {
             const active =
               item.href === "/"
                 ? pathname === "/"
