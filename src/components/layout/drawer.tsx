@@ -77,10 +77,38 @@ export function Drawer({
         </div>
 
         {/* Links */}
-        <nav className="mt-4 flex flex-col gap-1 px-3">
-          {NAV_ITEMS.map((item) => {
+        <nav className="mt-4 flex flex-col gap-1 overflow-y-auto px-3 pb-24">
+          {NAV_ITEMS.filter((i) => !i.sideOnly).map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                onClick={onClose}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98] ${
+                  active
+                    ? `bg-surface-muted ${item.text}`
+                    : "text-ink hover:bg-surface-muted"
+                }`}
+              >
+                <span
+                  className={`grid h-9 w-9 place-items-center rounded-lg ${
+                    active ? `${item.grad} shadow-soft` : "bg-surface-muted text-ink-muted"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+
+          {/* أدوات إضافية — تُفتح من هنا فقط (غير موجودة في الشريط السفلي) */}
+          <p className="mt-3 px-3 text-[11px] font-bold text-ink-muted">أدوات إضافية</p>
+          {NAV_ITEMS.filter((i) => i.sideOnly).map((item) => {
+            const active = pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
