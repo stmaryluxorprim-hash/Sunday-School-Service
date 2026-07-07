@@ -5,6 +5,7 @@ import {
   UserRound,
   MessageCircle,
   Bell,
+  ShoppingBag,
   LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export const MEMBER_NAV_ITEMS: MemberNavItem[] = [
   { key: "home", label: "الرئيسية", href: "/member", icon: Home, grad: "grad-primary", text: "text-primary" },
   { key: "attendance", label: "الحضور", href: "/member/attendance", icon: CalendarCheck, grad: "grad-teal", text: "text-teal-600" },
   { key: "points", label: "النقاط", href: "/member/points", icon: Star, grad: "grad-amber", text: "text-amber-600" },
+  { key: "purchases", label: "مشترياتي", href: "/member/purchases", icon: ShoppingBag, grad: "grad-green", text: "text-green-600" },
   { key: "data", label: "بياناتي", href: "/member/data", icon: UserRound, grad: "grad-violet", text: "text-violet-600" },
   { key: "messages", label: "الرسائل", href: "/member/messages", icon: MessageCircle, grad: "grad-green", text: "text-green-600" },
 ];
