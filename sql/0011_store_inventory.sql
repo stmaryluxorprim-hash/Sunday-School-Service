@@ -91,11 +91,15 @@ create policy "store_items_delete" on public.store_items for delete to authentic
 
 drop policy if exists "store_invoices_select" on public.store_invoices;
 create policy "store_invoices_select" on public.store_invoices for select to authenticated using (true);
+drop policy if exists "store_invoices_insert" on public.store_invoices;
+create policy "store_invoices_insert" on public.store_invoices for insert to authenticated with check (true);
 drop policy if exists "store_invoices_delete" on public.store_invoices;
 create policy "store_invoices_delete" on public.store_invoices for delete to authenticated using (true);
 
 drop policy if exists "store_inv_items_select" on public.store_invoice_items;
 create policy "store_inv_items_select" on public.store_invoice_items for select to authenticated using (true);
+drop policy if exists "store_inv_items_insert" on public.store_invoice_items;
+create policy "store_inv_items_insert" on public.store_invoice_items for insert to authenticated with check (true);
 
 -- ---------------------------------------------------------------------
 -- 5) RPC: store_checkout — إتمام الشراء ذرّياً

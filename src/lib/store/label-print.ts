@@ -67,7 +67,8 @@ function labelStyles(perPage: LabelsPerPage): string {
   const big = perPage === 1;
   const cardW = big ? 150 : 96;
   const cardH = big ? 240 : 138;
-  const photoH = big ? 100 : 52;
+  /** الصورة مربّعة (نفس صورة الرفع المربّعة 512×512) — عرض = ارتفاع. */
+  const photoS = big ? 95 : 55;
   const nameFs = big ? 24 : 14;
   const priceFs = big ? 34 : 18;
   const qrSize = big ? 62 : 38;
@@ -87,7 +88,7 @@ function labelStyles(perPage: LabelsPerPage): string {
     `.lbl{width:${cardW}mm;height:${cardH}mm;border:0.4mm dashed #94a3b8;border-radius:4mm;` +
     "display:flex;flex-direction:column;align-items:center;padding:4mm;background:#fff;overflow:hidden;}" +
     `.lbl-head{font-size:${big ? 13 : 9}px;font-weight:700;color:#64748b;margin-bottom:2mm;}` +
-    `.lbl-photo{width:100%;height:${photoH}mm;object-fit:cover;border-radius:3mm;background:#f1f5f9;}` +
+    `.lbl-photo{width:${photoS}mm;height:${photoS}mm;object-fit:cover;border-radius:3mm;background:#f1f5f9;flex-shrink:0;}` +
     `.lbl-photo-empty{display:grid;place-items:center;font-size:${big ? 60 : 30}px;}` +
     `.lbl-name{font-size:${nameFs}px;font-weight:800;color:#0f172a;text-align:center;margin-top:2.5mm;line-height:1.3;` +
     "display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}" +
