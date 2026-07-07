@@ -6,7 +6,6 @@ import { Drawer } from "./drawer";
 import { Sidebar } from "./sidebar";
 import { DateSheet } from "./date-sheet";
 import { BottomNav } from "./bottom-nav";
-import { MessagingApp } from "@/components/messaging/messaging-app";
 import { NotificationsPanel } from "@/components/notifications/notifications-panel";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { listNotifications } from "@/lib/notifications/operations";
@@ -44,7 +43,6 @@ function Shell({
   const { date, setDate } = useSelectedDate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -94,10 +92,7 @@ function Shell({
   return (
     <div className="bg-aurora min-h-screen">
       {/* الشريط الجانبي — واجهة الكمبيوتر فقط (lg+) */}
-      <Sidebar
-        profile={profile}
-        onOpenMessages={() => setMessagesOpen(true)}
-      />
+      <Sidebar profile={profile} />
 
       {/* المحتوى: عمود موبايل ضيّق — وعلى الشاشات الكبيرة مساحة واسعة بجانب السايدبار */}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col lg:me-0 lg:ms-72 lg:max-w-none">
@@ -106,7 +101,6 @@ function Shell({
           <Header
             onMenuClick={() => setMenuOpen(true)}
             onDateClick={() => setDateOpen(true)}
-            onMessagesClick={() => setMessagesOpen(true)}
             onNotificationsClick={() => setNotificationsOpen(true)}
             unreadCount={unreadCount}
             selectedDate={arabicDate}
@@ -123,21 +117,12 @@ function Shell({
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
           profile={profile}
-          onOpenMessages={() => {
-            setMenuOpen(false);
-            setMessagesOpen(true);
-          }}
         />
         <DateSheet
           open={dateOpen}
           onClose={() => setDateOpen(false)}
           value={date}
           onChange={setDate}
-        />
-        <MessagingApp
-          open={messagesOpen}
-          onClose={() => setMessagesOpen(false)}
-          profile={profile}
         />
         <NotificationsPanel
           open={notificationsOpen}

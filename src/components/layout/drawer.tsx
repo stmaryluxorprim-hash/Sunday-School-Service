@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { X, LogOut, UserCircle2, Church, MessageCircle } from "lucide-react";
+import { X, LogOut, UserCircle2, Church } from "lucide-react";
 import { NAV_ITEMS } from "@/config/navigation";
 import { useSettings } from "@/context/settings-context";
 import { signOut } from "@/app/login/actions";
@@ -11,15 +11,9 @@ type DrawerProps = {
   open: boolean;
   onClose: () => void;
   profile?: { id?: string; name: string; email: string } | null;
-  onOpenMessages?: () => void;
 };
 
-export function Drawer({
-  open,
-  onClose,
-  profile = null,
-  onOpenMessages,
-}: DrawerProps) {
+export function Drawer({ open, onClose, profile = null }: DrawerProps) {
   const pathname = usePathname();
   const { branding } = useSettings();
 
@@ -132,20 +126,6 @@ export function Drawer({
               </Link>
             );
           })}
-
-          {/* الرسائل الداخلية */}
-          {onOpenMessages && (
-            <button
-              type="button"
-              onClick={onOpenMessages}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-right text-sm font-semibold text-ink transition hover:bg-surface-muted active:scale-[0.98]"
-            >
-              <span className="grid h-9 w-9 place-items-center rounded-lg grad-green shadow-soft">
-                <MessageCircle className="h-5 w-5" />
-              </span>
-              الرسائل
-            </button>
-          )}
         </nav>
 
         {/* Logout */}
