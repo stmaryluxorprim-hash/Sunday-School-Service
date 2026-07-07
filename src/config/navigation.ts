@@ -10,6 +10,7 @@ import {
   Send,
   Cake,
   MessageCircle,
+  Store,
   LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ export const NAV_ITEMS: NavItem[] = [
   // ---- صفحات القائمة الجانبية فقط (لا تظهر في الشريط السفلي) ----
   { key: "messages", label: "الرسائل الداخلية", href: "/messages", icon: MessageCircle, permission: "page.messages.view", grad: "grad-primary", text: "text-primary", sideOnly: true },
   { key: "print", label: "الطباعة", href: "/print", icon: Printer, permission: "page.print.view", grad: "grad-green", text: "text-green-600", sideOnly: true },
+  { key: "store", label: "المتجر", href: "/store", icon: Store, permission: "page.store.view", grad: "grad-green", text: "text-green-600", sideOnly: true },
   { key: "achievements", label: "الإنجازات", href: "/achievements", icon: Trophy, permission: "page.achievements.view", grad: "grad-amber", text: "text-amber-600", sideOnly: true },
   { key: "events", label: "الإعلانات والفعاليات", href: "/events", icon: Megaphone, permission: "page.events.view", grad: "grad-violet", text: "text-violet-600", sideOnly: true },
   { key: "messenger", label: "الرسائل الجماعية", href: "/messenger", icon: Send, permission: "page.messenger.view", grad: "grad-teal", text: "text-teal-600", sideOnly: true },

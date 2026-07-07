@@ -42,6 +42,22 @@ export type MemberMessage = {
   created_at: string;
 };
 
+export type MemberInvoiceItem = {
+  item_name: string;
+  photo_url: string | null;
+  unit_price: number;
+  qty: number;
+  line_total: number;
+};
+
+export type MemberInvoice = {
+  id: string;
+  invoice_no: number;
+  total_points: number;
+  created_at: string;
+  items: MemberInvoiceItem[];
+};
+
 export type MemberNotification = {
   id: string;
   body: string;
@@ -117,6 +133,14 @@ export async function sendMemberMessage(
   if (error || !data) return null;
   const row = Array.isArray(data) ? data[0] : data;
   return (row as MemberMessage) ?? null;
+}
+
+/** فواتير مشتريات المخدوم من المتجر (كل فاتورة مع بنودها). */
+export async function getMemberInvoices(code: string): Promise<MemberInvoice[]> {
+  const supabase = portalClient();
+  if (!supabase) return [];
+  const { data } = await supabase.rpc("member_portal_invoices", { p_code: code });
+  return (data as MemberInvoice[]) ?? [];
 }
 
 export async function getMemberNotifications(code: string): Promise<MemberNotification[]> {
