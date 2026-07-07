@@ -29,11 +29,11 @@ export function Drawer({ open, onClose, profile = null }: DrawerProps) {
 
       {/* Panel (slides from the RTL start = right) */}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 w-[82%] max-w-xs bg-surface shadow-2xl transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-[82%] max-w-xs flex-col bg-surface shadow-2xl transition-transform duration-300 lg:hidden ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="bg-aurora flex items-center justify-between gap-3 p-5 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
+        <div className="bg-aurora flex shrink-0 items-center justify-between gap-3 p-5 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
           <div className="relative z-10 flex items-center gap-3">
             <div className="grid h-12 w-12 place-items-center rounded-xl btn-gradient shadow-soft overflow-hidden">
               {branding.logoUrl ? (
@@ -58,7 +58,7 @@ export function Drawer({ open, onClose, profile = null }: DrawerProps) {
         </div>
 
         {/* Current user */}
-        <div className="mx-4 mt-4 flex items-center gap-3 rounded-lg bg-surface-muted p-3">
+        <div className="mx-4 mt-4 flex shrink-0 items-center gap-3 rounded-lg bg-surface-muted p-3">
           <UserCircle2 className="h-10 w-10 text-primary" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-ink">
@@ -70,8 +70,8 @@ export function Drawer({ open, onClose, profile = null }: DrawerProps) {
           </div>
         </div>
 
-        {/* Links */}
-        <nav className="mt-4 flex flex-col gap-1 overflow-y-auto px-3 pb-24">
+        {/* Links — منطقة قابلة للتمرير تأخذ المساحة المتبقية */}
+        <nav className="mt-4 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-3 pb-4">
           {NAV_ITEMS.filter((i) => !i.sideOnly).map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -128,8 +128,8 @@ export function Drawer({ open, onClose, profile = null }: DrawerProps) {
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="absolute inset-x-0 bottom-0 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+        {/* Logout — ثابت أسفل اللوحة خارج منطقة التمرير */}
+        <div className="shrink-0 border-t border-white/30 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <form action={signOut}>
             <button
               type="submit"
