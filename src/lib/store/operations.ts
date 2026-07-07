@@ -104,7 +104,12 @@ export async function storeCheckout(
     if (msg.includes("empty_cart")) return { ok: false, message: "السلة فارغة" };
     if (msg.includes("item_not_found")) return { ok: false, message: "صنف غير موجود أو موقوف" };
     if (msg.includes("member_not_found")) return { ok: false, message: "المخدوم غير موجود" };
-    return { ok: false, message: "تعذّر إتمام العملية" };
+    if (msg.includes("row-level security") || msg.includes("permission denied"))
+      return {
+        ok: false,
+        message: "صلاحيات قاعدة البيانات ناقصة — أعد تشغيل ملف sql/0011 في Supabase",
+      };
+    return { ok: false, message: `تعذّر إتمام العملية${msg ? ` (${msg})` : ""}` };
   }
 
   const row = Array.isArray(data) ? data[0] : data;

@@ -185,10 +185,10 @@ export default function StorePage() {
                       <img
                         src={i.photo_url}
                         alt=""
-                        className="h-28 w-full rounded-lg object-cover"
+                        className="aspect-square w-full rounded-lg object-cover"
                       />
                     ) : (
-                      <div className="grid h-28 w-full place-items-center rounded-lg bg-surface-muted text-4xl">
+                      <div className="grid aspect-square w-full place-items-center rounded-lg bg-surface-muted text-4xl">
                         🎁
                       </div>
                     )}
