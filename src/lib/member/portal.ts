@@ -58,6 +58,28 @@ export type MemberInvoice = {
   items: MemberInvoiceItem[];
 };
 
+export type MemberAchievement = {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string;
+  color: string;
+  points: number;
+  earned: boolean;
+  awarded_at: string | null;
+};
+
+export type MemberEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  kind: "event" | "announcement";
+  event_date: string | null;
+  event_time: string | null;
+  location: string | null;
+  created_at: string;
+};
+
 export type MemberNotification = {
   id: string;
   body: string;
@@ -141,6 +163,22 @@ export async function getMemberInvoices(code: string): Promise<MemberInvoice[]> 
   if (!supabase) return [];
   const { data } = await supabase.rpc("member_portal_invoices", { p_code: code });
   return (data as MemberInvoice[]) ?? [];
+}
+
+/** إنجازات المخدوم — كل التعريفات مع حالة الحصول (يظهر ما يمنحه الخادم فوراً). */
+export async function getMemberAchievements(code: string): Promise<MemberAchievement[]> {
+  const supabase = portalClient();
+  if (!supabase) return [];
+  const { data } = await supabase.rpc("member_portal_achievements", { p_code: code });
+  return (data as MemberAchievement[]) ?? [];
+}
+
+/** الإعلانات والفعاليات المنشورة من صفحة الخادم. */
+export async function getMemberEvents(code: string): Promise<MemberEvent[]> {
+  const supabase = portalClient();
+  if (!supabase) return [];
+  const { data } = await supabase.rpc("member_portal_events", { p_code: code });
+  return (data as MemberEvent[]) ?? [];
 }
 
 export async function getMemberNotifications(code: string): Promise<MemberNotification[]> {
